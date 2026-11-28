@@ -48,6 +48,28 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.150" aria-labelledby="h-v0.1.0-alpha.150">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.150">v0.1.0-alpha.150</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.150</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">A site’s scheduled tasks run as standard systemd timers inside the site’s own limits and under the same mail block as its programs; a site’s account can no longer install its own crontab, switch lingering on for itself or start a service manager of its own at an SFTP login.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-31">CP-2026-31</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">After the update every site goes inside its limits by itself, its scheduled tasks first, then its running programs, one site at a time; there is nothing to press, and a site that cannot be moved is shown in Problems now with why, who acts and Try again.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-32">CP-2026-32</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A restart of the server during an update to this release no longer leaves the update unfinished: it finishes by itself once the server has started again.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-33">CP-2026-33</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">The update page no longer stays locked after an update that was refused before it started: after two minutes the notice can be closed, and closing it starts nothing.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-34">CP-2026-34</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Deleting a database whose user was left on the database server says which users were left, why and who acts, instead of asking to press Delete again where that cannot help.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-35">CP-2026-35</a></td></tr>
+<tr><th scope="row">Removed</th><td data-k="Change">The buttons “Move into the limits” and “Move them all” are gone.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A soft restart (systemctl soft-reboot) is not recognised as a restart: an update in its last stage then stays unfinished; do not restart the server that way until the update’s page says it has finished.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A site’s PHP (its PHP-FPM pool, and what a PHP script starts) runs outside the site’s limits.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.150.md">Full release notes of v0.1.0-alpha.150</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.149" aria-labelledby="h-v0.1.0-alpha.149">
 <header><span class="num">2026-11-26</span><h2 id="h-v0.1.0-alpha.149">v0.1.0-alpha.149</h2></header>
 <div>

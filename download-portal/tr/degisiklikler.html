@@ -48,6 +48,28 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.150" aria-labelledby="h-v0.1.0-alpha.150">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.150">v0.1.0-alpha.150</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.150</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Bir sitenin zamanlanmış görevleri standart systemd zamanlayıcıları olarak sitenin kendi sınırlarının içinde ve programlarıyla aynı posta engelinin altında çalışır; bir sitenin hesabı artık kendi crontab’ını kuramaz, kendisi için “lingering”i açamaz ve bir SFTP girişinde kendi hizmet yöneticisini başlatamaz.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-31">CP-2026-31</a></td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Güncellemeden sonra her site, önce zamanlanmış görevleri sonra çalışan programlarıyla, tek tek ve kendiliğinden sınırlarının içine alınır; basılacak bir şey yoktur, taşınamayan bir site Şu anki sorunlar’da nedeni, kimin yapacağı ve Tekrar dene ile gösterilir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-32">CP-2026-32</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Bu sürüme güncelleme sırasında sunucunun yeniden başlatılması artık güncellemeyi yarım bırakmaz: sunucu yeniden açıldıktan sonra güncelleme kendiliğinden tamamlanır.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-33">CP-2026-33</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Başlamadan reddedilen bir güncellemeden sonra güncelleme sayfası artık kilitli kalmaz: iki dakika sonra bildirim kapatılabilir ve kapatmak hiçbir şey başlatmaz.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-34">CP-2026-34</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Kullanıcısı veritabanı sunucusunda kalan bir veritabanını silmek, yeniden basmanın işe yaramayacağı yerde Sil’e yeniden basmayı istemek yerine hangi kullanıcıların neden kaldığını ve kimin yapacağını söyler.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-35">CP-2026-35</a></td></tr>
+<tr><th scope="row">Kaldırıldı</th><td data-k="Değişiklik">“Sınırların içine taşı” ve “Hepsini taşı” düğmeleri kaldırıldı.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Yumuşak bir yeniden başlatma (systemctl soft-reboot) yeniden başlatma sayılmaz: son aşamasındaki bir güncelleme o zaman yarım kalır; güncelleme sayfası bittiğini söyleyene kadar sunucuyu bu yolla yeniden başlatmayın.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Bir sitenin PHP’si (PHP-FPM havuzu ve bir PHP betiğinin başlattıkları) sitenin sınırlarının dışında çalışır.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.150.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.150</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.149" aria-labelledby="h-v0.1.0-alpha.149">
 <header><span class="num">2026-11-26</span><h2 id="h-v0.1.0-alpha.149">v0.1.0-alpha.149</h2></header>
 <div>

@@ -1,0 +1,104 @@
+{
+  "version": "v0.1.0-alpha.150",
+  "published": "",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:5",
+    "says": "A security release with corrections."
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "A site’s scheduled tasks run as standard systemd timers inside the site’s own limits and under the same mail block as its programs; a site’s account can no longer install its own crontab, switch lingering on for itself or start a service manager of its own at an SFTP login.",
+        "tr": "Bir sitenin zamanlanmış görevleri standart systemd zamanlayıcıları olarak sitenin kendi sınırlarının içinde ve programlarıyla aynı posta engelinin altında çalışır; bir sitenin hesabı artık kendi crontab’ını kuramaz, kendisi için “lingering”i açamaz ve bir SFTP girişinde kendi hizmet yöneticisini başlatamaz."
+      },
+      "case": "CP-2026-31",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:38",
+        "says": "Now each scheduled task is a standard systemd timer"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "After the update every site goes inside its limits by itself, its scheduled tasks first, then its running programs, one site at a time; there is nothing to press, and a site that cannot be moved is shown in Problems now with why, who acts and Try again.",
+        "tr": "Güncellemeden sonra her site, önce zamanlanmış görevleri sonra çalışan programlarıyla, tek tek ve kendiliğinden sınırlarının içine alınır; basılacak bir şey yoktur, taşınamayan bir site Şu anki sorunlar’da nedeni, kimin yapacağı ve Tekrar dene ile gösterilir."
+      },
+      "case": "CP-2026-32",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:62",
+        "says": "Every site goes inside its limits by itself."
+      }
+    },
+    {
+      "kind": "removed",
+      "text": {
+        "en": "The buttons “Move into the limits” and “Move them all” are gone.",
+        "tr": "“Sınırların içine taşı” ve “Hepsini taşı” düğmeleri kaldırıldı."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:77",
+        "says": "The buttons \"Move into the limits\" and \"Move them all\" are gone."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A restart of the server during an update to this release no longer leaves the update unfinished: it finishes by itself once the server has started again.",
+        "tr": "Bu sürüme güncelleme sırasında sunucunun yeniden başlatılması artık güncellemeyi yarım bırakmaz: sunucu yeniden açıldıktan sonra güncelleme kendiliğinden tamamlanır."
+      },
+      "case": "CP-2026-33",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:137",
+        "says": "Now the update finishes by itself after such a restart."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "The update page no longer stays locked after an update that was refused before it started: after two minutes the notice can be closed, and closing it starts nothing.",
+        "tr": "Başlamadan reddedilen bir güncellemeden sonra güncelleme sayfası artık kilitli kalmaz: iki dakika sonra bildirim kapatılabilir ve kapatmak hiçbir şey başlatmaz."
+      },
+      "case": "CP-2026-34",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:154",
+        "says": "The update page after an update that was refused before it started"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "Deleting a database whose user was left on the database server says which users were left, why and who acts, instead of asking to press Delete again where that cannot help.",
+        "tr": "Kullanıcısı veritabanı sunucusunda kalan bir veritabanını silmek, yeniden basmanın işe yaramayacağı yerde Sil’e yeniden basmayı istemek yerine hangi kullanıcıların neden kaldığını ve kimin yapacağını söyler."
+      },
+      "case": "CP-2026-35",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:165",
+        "says": "Deleting a database whose user was left on the database server"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A soft restart (systemctl soft-reboot) is not recognised as a restart: an update in its last stage then stays unfinished; do not restart the server that way until the update’s page says it has finished.",
+        "tr": "Yumuşak bir yeniden başlatma (systemctl soft-reboot) yeniden başlatma sayılmaz: son aşamasındaki bir güncelleme o zaman yarım kalır; güncelleme sayfası bittiğini söyleyene kadar sunucuyu bu yolla yeniden başlatmayın."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:283",
+        "says": "A soft restart is not recognised as a restart."
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A site’s PHP (its PHP-FPM pool, and what a PHP script starts) runs outside the site’s limits.",
+        "tr": "Bir sitenin PHP’si (PHP-FPM havuzu ve bir PHP betiğinin başlattıkları) sitenin sınırlarının dışında çalışır."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:288",
+        "says": "A site's PHP runs outside its limits."
+      }
+    }
+  ]
+}
