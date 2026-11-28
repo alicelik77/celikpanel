@@ -103,7 +103,7 @@ The build compares the two languages and fails when they differ in: the set of f
   how it resumes (see `reading-states`).
 - Plain words. No internal codes, no decision numbers, no team words.
 - Turkish is written as Turkish, not translated sentence by sentence.
-- Never show a real password, key or address; use `example.com`, `203.0.113.10`.
+- Never show a real password, key or address; use names under our own domain (`magaza.celikpanel.net`, `blog.celikpanel.net`, `ajans.celikpanel.net`; mail `bilgi@magaza.celikpanel.net`) and `203.0.113.10`.
 
 ## Size
 

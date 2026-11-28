@@ -44,15 +44,15 @@ The **Webmail** box in the Mail section has **Open Webmail**. Sign in with the f
 
 ## Settings for mail programs {#mail-programs}
 
-**Settings** shows **Mail client setup** for Thunderbird, Outlook, Apple Mail or a phone. For `example.com` the values are:
+**Settings** shows **Mail client setup** for Thunderbird, Outlook, Apple Mail or a phone. For `magaza.celikpanel.net` the values are:
 
 | | Server | Port | Security |
 |---|---|---|---|
-| Incoming (IMAP) | `mail.example.com` | 993 | SSL/TLS |
-| Incoming (POP3) | `mail.example.com` | 995 | SSL/TLS |
-| Outgoing (SMTP) | `mail.example.com` | 587 | STARTTLS |
+| Incoming (IMAP) | `mail.magaza.celikpanel.net` | 993 | SSL/TLS |
+| Incoming (POP3) | `mail.magaza.celikpanel.net` | 995 | SSL/TLS |
+| Outgoing (SMTP) | `mail.magaza.celikpanel.net` | 587 | STARTTLS |
 
-The **Username** is always the full email address, such as `anna@example.com`, with the mailbox password. The outgoing server needs the same sign-in.
+The **Username** is always the full email address, such as `bilgi@magaza.celikpanel.net`, with the mailbox password. The outgoing server needs the same sign-in.
 
 ## Mail that lands in spam {#authentication}
 

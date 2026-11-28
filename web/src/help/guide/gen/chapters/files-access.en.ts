@@ -29,7 +29,7 @@ const chapter = {
     ["p",["Never paste the private key, the file without ",["c",".pub"],". Some servers accept only keys for SFTP and SSH; ",["b","FTP, SFTP and SSH"]," tells you when that is the case, and FTP then still uses the password."]],
     ["h",2,"ssh","The command line (SSH)"],
     ["p",[["b","Command line (SSH)"]," opens a terminal closed into your subscription's folder, with basic file tools only. Turn it on only if you need it, in the same way as file access: tick it, then ",["b","Review the change"]," and ",["b","Apply the change"],". Connect with the same user name and your password or key:"]],
-    ["pre","ssh -p 22 user@server.example.com"],
+    ["pre","ssh -p 22 user@magaza.celikpanel.net"],
     ["p",["Use the host, port and user name ",["b","FTP, SFTP and SSH"]," shows; they may differ from this example. If ",["b","Command line (SSH)"]," is not part of your subscription's plan, the page says so. File access is not affected, and your provider can add it."]],
     ["h",2,"ssh-tools","When SSH cannot be turned on yet"],
     ["p",["The command line takes its tools from the server. If the server lacks some of them, ",["b","FTP, SFTP and SSH"]," says which ones, and the SSH option stays hidden until they are there. FTP and SFTP keep working meanwhile."]],

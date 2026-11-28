@@ -29,7 +29,7 @@ const chapter = {
     ["p",["Özel anahtarı, yani ",["c",".pub"]," uzantısı olmayan dosyayı asla yapıştırmayın. Bazı sunucular SFTP ve SSH için yalnız anahtar kabul eder; böyle olduğunda ",["b","FTP, SFTP ve SSH"]," parçası bunu söyler ve FTP yine parolayı kullanır."]],
     ["h",2,"ssh","Komut satırı (SSH)"],
     ["p",[["b","Komut satırı (SSH)"],", aboneliğinizin klasörüne kapatılmış ve yalnız temel dosya araçlarını içeren bir terminal açar. Yalnız gerekiyorsa açın; dosya erişimiyle aynı yoldan: işaretleyin, sonra ",["b","Değişikliği gözden geçir"]," ve ",["b","Değişikliği uygula"],". Aynı kullanıcı adıyla, parolanız ya da anahtarınızla bağlanın:"]],
-    ["pre","ssh -p 22 kullanici@sunucu.example.com"],
+    ["pre","ssh -p 22 kullanici@magaza.celikpanel.net"],
     ["p",[["b","FTP, SFTP ve SSH"]," parçasının gösterdiği sunucu adını, portu ve kullanıcı adını kullanın; bu örnekten farklı olabilirler. ",["b","Komut satırı (SSH)"]," aboneliğinizin planında yoksa sayfa bunu söyler. Dosya erişimi bundan etkilenmez; sağlayıcınız komut satırını planınıza ekleyebilir."]],
     ["h",2,"ssh-tools","SSH henüz açılamıyorsa"],
     ["p",["Komut satırı araçlarını sunucudan alır. Sunucuda bunların bir kısmı yoksa ",["b","FTP, SFTP ve SSH"]," parçası hangilerinin eksik olduğunu söyler ve SSH seçeneği onlar kurulana kadar görünmez. Bu sırada FTP ve SFTP çalışmaya devam eder."]],

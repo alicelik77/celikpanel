@@ -16,7 +16,7 @@ Bir sitede tek uygulama olur ve yalnız boş siteye kurulur; böylece hiçbir do
 
 - **PHP … gerekir**: sitenin PHP sürümünü aynı **Site** bölümündeki **PHP ayarları** parçasından değiştirin.
 - PHP uzantıları eksik: adı yazılan paketleri yönetici kurar.
-- Sitenin genel klasöründe zaten dosyalar var: onları taşıyın ya da silin veya `magaza.example.com` gibi yeni bir alt alan adı kullanın.
+- Sitenin genel klasöründe zaten dosyalar var: onları taşıyın ya da silin veya `blog.magaza.celikpanel.net` gibi yeni bir alt alan adı kullanın.
 - Bu sitede kullanılamaz: sağlayıcınızdan uygulamayı sunmasını isteyin.
 
 **Kur** düğmesine basıp onaylayın. Panel veritabanını oluşturur ve uygulamanın kendi kurulumunu çalıştırır.

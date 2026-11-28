@@ -13,7 +13,7 @@ Alan adının **Programlar** bölümündeki **Yapay zekâ ve otomasyon** parças
 Sayfa hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:
 
 - **Web sitesi ve sertifika.** Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce **Güvenlik** bölümünden alın.
-- **Ayrı bir alt alan adı**, örneğin `n8n.example.com`, en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir.
+- **Ayrı bir alt alan adı**, örneğin `n8n.ajans.celikpanel.net`, en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir.
 - **Sunulmuş olması.** Yönetici uygulamayı sunmadan hiçbir şey kurulamaz; planınız da onu kapsamalıdır. Kapsamıyorsa satır kime başvuracağınızı yazar.
 - **Sunucu.** n8n, yöneticinin Bileşenler → Node.js bölümünden kuracağı Node.js 24'ü ister; eksikse satır bunu söyler.
 

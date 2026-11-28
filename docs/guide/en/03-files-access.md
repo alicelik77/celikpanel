@@ -65,7 +65,7 @@ Never paste the private key, the file without `.pub`. Some servers accept only k
 **Command line (SSH)** opens a terminal closed into your subscription's folder, with basic file tools only. Turn it on only if you need it, in the same way as file access: tick it, then **Review the change** and **Apply the change**. Connect with the same user name and your password or key:
 
 ```
-ssh -p 22 user@server.example.com
+ssh -p 22 user@magaza.celikpanel.net
 ```
 
 Use the host, port and user name **FTP, SFTP and SSH** shows; they may differ from this example. If **Command line (SSH)** is not part of your subscription's plan, the page says so. File access is not affected, and your provider can add it.

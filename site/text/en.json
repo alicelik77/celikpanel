@@ -100,7 +100,7 @@
   "spec.status": "Status",
   "spec.status.v": "Alpha: for test servers; not ready for production",
   "fig.domain.caption": "A domain’s overview. The real panel with sample data; screen taken on 19 November 2026, before alpha.141, so details may differ in the current release.",
-  "fig.domain.alt": "Overview tab of the domain example.com: connected, DNS served by this server; its name servers and the address it resolves to; certificate valid for 78 more days; mail sending and authentication complete; last backup today.",
+  "fig.domain.alt": "Overview tab of the domain magaza.celikpanel.net: connected, DNS served by this server; its name servers and the address it resolves to; certificate valid for 78 more days; mail sending and authentication complete; last backup today.",
   "fig.domains.caption": "Domains: type, PHP version, disk and monthly traffic. Sample data.",
   "fig.domains.alt": "The Domains page: six sample domains with their type, PHP version, disk use, monthly traffic and state.",
   "fig.databases.caption": "Databases: owner, reseller, engine and size. Sample data.",

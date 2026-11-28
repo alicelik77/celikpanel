@@ -15,7 +15,7 @@ Everything you host lives under a domain: the website, its mail, its databases a
 ## Adding a domain {#adding}
 
 1. Press **Add domain**.
-2. Type the **Domain name** without `www`, for example `example.com`. A subdomain is added the same way: `shop.example.com`.
+2. Type the **Domain name** without `www`, for example `magaza.celikpanel.net`. A subdomain is added the same way: `blog.magaza.celikpanel.net`.
 3. Under **What is this domain for?** choose **Website**, or **DNS only (no website)** if the site is hosted elsewhere.
 4. Leave **Enable SSL (Let’s Encrypt)** ticked if the domain already points to this server.
 5. Press **Create domain**.
