@@ -664,17 +664,50 @@ değişmedi; yalnız onu kimin başlattığı ve ekranların ne sunduğu değiş
 - **Nasıl.** Her site, yöneticinin işleminin kullandığı aynı basışla: önce zamanlanmış görevler
   (§9.3), sonra programlar; her site için yeni bir istek kimliği (`auto-<rastgele>`); denetim kaydına
   `site.limits_move` ve `automatic: true` olarak yazılır.
-- **Kapı.** Her siteden önce panelin kendi güncellemesi kabul edilmiş ya da sürüyorken (panelin kendi
-  bilgisi), sunucu başka bir değişiklikle meşgulken (Ajan'ın kendi hazır olma bilgisi: başka bir
-  değişiklik, paket yöneticisi işi) ve yöneticinin bastığı bir taşıma sürerken bekler. Ajan, bir
-  güncelleme kaydı kuyrukta ya da sürüyorken ve başka bir taşıma onun hakkını tutarken taşımayı reddeder;
-  panel yeniden başlasa da (hak Ajan'ındır, panelin bir değişkeni değil). Böyle bir nedenle reddedilmek
-  bir hata değildir: site turun sonuna gider ve bir dakika sonra, iki katına çıkarak en çok on dakika
-  arayla yeniden denenir; altı saat böyle reddedildikten sonra o nedenle başarısız işaretlenir.
-- **Her site, kurulu sürüm başına bir kez; asla bir döngü değil.** Taşıma gönderilmeden önce site
+- **Kapı** (düzeltme turu G1). Güncelleme tamamlanmadan işçinin hiçbir şey taşımamasını sağlayanlar,
+  bu sırayla:
+  1. **Ajan'ın kendi kuralı.** Taşımanın hakkı (her taşıma, Tekrar dene, görevlerin taşınması, geri
+     alma ve yeniden oluşturma onu alır), güncellemenin işlem işaretçilerinden biri
+     `/var/lib/celikpanel-release-transaction` içinde durdukça (`quiesce.pending`, `active`,
+     `completion.pending`, `scheduler-restore.pending`; `update.sh`, `rollback.sh` ve iki tamamlama
+     betiği bunları `deploy/release-transaction-guard.sh` ile yazar ve siler; otomatik geri dönüş de
+     `active`'i geri alma olarak devralır ve `completion.pending` ile biter) `update_running` ile,
+     klasör ya da bir işaretçi incelenemiyorsa `update_unreadable` ile reddeder. Sunucunun değişiklik
+     kilidini kim tutarsa tutsun geçerlidir: güncelleme penceresinde sunucu yeniden başlarsa kilit
+     tamamlayıcının denemeleri arasında boşta kalır, kural tamamlanma işareti silinene dek yine tutar.
+     Yalnız okur.
+  2. **Sunucunun değişiklik kilidi.** Güncellemenin betikleri kilidi tutarken Ajan'ın hazır olma
+     bilgisi `host_lock` der (güncellenen panel başlarken, tamamlanma işareti silinene dek tutarlar);
+     işçi bekler.
+  3. **Ajan'ın kendi güncelleme kaydı**: 31 dakikadan kısa süre önce açılmış, kuyrukta ya da süren bir
+     kayıt reddeder (`update_running`); o süre içinde değişmiş okunamayan bir kayıt da.
+  4. Panelin başlangıcından sonraki **beş dakikalık ilk bekleme**.
+  Panelin kendi bilgisi (bu sürecin kabul ettiği bir güncelleme) kapıyı yalnız güncellemeyi kabul eden
+  süreçte kapatır, güncellenen panelin ilk sürecinde asla. Yöneticinin bastığı bir taşıma işçiyi
+  bekletir. Böyle bir nedenle reddedilmek bir hata değildir: site turun sonuna gider ve bir dakika
+  sonra, iki katına çıkarak en çok on dakika arayla yeniden denenir; altı saat böyle reddedildikten
+  sonra o nedenle başarısız işaretlenir (hiçbir şey gönderilmedi; sonraki bir sürüm yeniden dener).
+  Beklerken sakin satır bunu söyler (aşağıda). Bileşen kanıtı `TestTheUpdatesPendingMarkerRefusesEveryMove`
+  ve `…RefusesTheTasksMoves` (`cmd/agent`) ile `TestTheWorkerStartsOnlyAfterTheGate` (`cmd/panel`:
+  kilit tutulurken gerçek hazır olma okuması, ardından Ajan'ın reddi) testleridir; sistem kanıtı
+  laboratuvarın uzatılmış pencere adımıdır.
+- **Tur sırasında panelin güncellemesi** (düzeltme turu G3). Güncelleme yalnız bir site taşınırken
+  reddedilir. Onu yöneticinin basışı değil işçi taşıyorsa ret, bu tek sitenin taşımasının yaklaşık 12
+  dakika içinde biteceğini (panelin bir taşıma için beklediği süre, üst sınır) ve panelin o arada başka
+  site başlatmadığını söyler; işçi sonra 30 dakika boyunca ya da bir güncelleme kabul edilene dek
+  (hangisi önce gelirse) yeni bir site başlatmaz (sonra güncellemenin kendi kapısı tutar). İsteği
+  yalnız bu ret kaydeder, bir sayfanın okunması ya da durum sorgusu asla; bellekte tutulur, panel
+  yeniden başlarsa kaybolur; bu yalnız işçinin devam etmesine yol açar, hiçbir şeyi iki kez taşımaz.
+  Hiçbir şey güncellemeyi kendiliğinden başlatmaz. Taşımanın hakkı, taşımadan sonraki okumadan önce
+  bırakılır.
+- **Her site bir kez; asla bir döngü değil.** Taşıma gönderilmeden önce site
   `panel_settings` içindeki `site_auto_move_v1` kaydında "başladı" diye işaretlenir (panelin sürümü ve
-  derlemesiyle; başka bir sürümün işaretleri yok sayılır, böylece her sürüm hâlâ dışarıdaki bir siteyi
-  bir kez dener). Şema adımı yok: panel sitelerin sınırlarıyla ilgili öteki kayıtlarını da
+  derlemesiyle). "Taşındı", "bırakıldı" ve yalnız beklemeyi kaydeden bir başarısızlık sürüm başına bir
+  kez sayılır: sonraki sürüm hâlâ dışarıdaki böyle bir siteyi yeniden dener. Denenmiş ama siteyi içeri
+  almamış bir taşımanın işaretleri (başarısız, süresi doldu, bilinmiyor, tutuldu ve kimsenin çözmediği bir
+  "başladı") sonraki sürümlere taşınır (düzeltme turu G4): programı diliminde ayağa kalkmayan bir site her
+  panel güncellemesinde yeniden başlatılmaz; satırı ve Tekrar dene, Tekrar dene onu içeri alana ya da site
+  silinene dek kalır. G4'ten önce yazılmış bir kayıt aynı anahtarlara sahiptir ve aynı biçimde okunur. Şema adımı yok: panel sitelerin sınırlarıyla ilgili öteki kayıtlarını da
   `panel_settings` içinde tutar. Yazılamayan bir işaret hiçbir şeyin gönderilmemesi demektir; okunamayan
   bir kayıt hiçbir sitenin kendiliğinden taşınmaması demektir. Yanıttan sonra işaret ne olduğunu söyler:
   taşındı; bırakıldı (programlar girdi, görevler sunucu sahibinin nedeniyle cron'da kaldı: zamanlayıcının
@@ -683,7 +716,19 @@ değişmedi; yalnız onu kimin başlattığı ve ekranların ne sunduğu değiş
   bilinmiyor. **Bunların hiçbiri işçi tarafından yeniden denenmez.** Taşıması başarısız olan, süresi dolan,
   sonucu bilinmeyen ya da sonradan çözülen bir kayıt bırakan ve hâlâ sınırlarının dışında olan her site,
   Şu anki sorunlar'da site başına TEK satırdır (`site_auto_move_failed`, yönetici): nedeni ve **Tekrar
-  dene**, ki aynı taşımadır (`POST /api/v1/domains/{id}/site-limits/move`). Sunucu sahibinin nedeniyle
+  dene**, ki aynı taşımadır (`POST /api/v1/domains/{id}/site-limits/move`). Sözler yalnız bilineni söyler
+  (düzeltme turu G5): "olduğu gibi geri kondu" yalnız programların bölümü siteyi geri koyduysa ve görevler
+  hiçbir şeyi değiştirmediyse; görevler taşındıktan sonra geri konan programlar, geri koyduğunu bildirmeden
+  duran bir taşıma, görevlerin reddi, panelin okunamayan ya da yazılamayan kendi kaydı, her birinin kendi
+  sözü vardır. **Hiçbir site satırsız dışarıda kalmaz** (düzeltme turu G2): hiçbir tur planlanmamış,
+  sürmüyor ya da beklemiyorken, işareti ne olursa olsun sınırlarının dışındaki bir site (önce taşınmış ve
+  yeniden dışarıda, örneğin dilim dosyası silinmiş ya da sonradan dışarıda yazılmış bir program; işaretsiz;
+  kimsenin çözmediği bir "başladı") aynı satırı ve Tekrar dene'yi alır; bu sürümde kendiliğinden yeniden
+  taşınmaz ve onu arayan dönemsel bir tur yoktur. Başarısız olan site okuması vazgeçmez: on dakikada bir
+  yeniden denenir ve bir saat okuma olmazsa Şu anki sorunlar'da TEK satır çıkar (`site_auto_move_unread`:
+  siteler henüz sınırlarının içinde değil, çünkü Ajan yanıt vermedi ya da panelin kendi site listesi
+  okunamadı; yönetici Ajan'ı `sudo systemctl status celikpanel-agent` ile ya da panelin günlüğünü
+  denetler; okuma başarılı olunca iş kendiliğinden sürer ve satır gider). Sunucu sahibinin nedeniyle
   bırakılan site yapılacak iş değildir: kartı nedeni ve kimin yapacağını söyler, değiştiğinde için Tekrar
   dene sunar; sahibin kendi satırları (`cron.allow`, burada yapılmamış bir crontab satırı) olduğu gibi
   kalır. Yöneticinin kendi Tekrar dene'si de aynı biçimde kaydedilir; satır ve kart son denemeyi izler.
@@ -694,7 +739,10 @@ değişmedi; yalnız onu kimin başlattığı ve ekranların ne sunduğu değiş
 - **Tutulan bir kayıt turu durdurur**, bir basışı durdurduğu gibi: bir taşıma kaydı tutulurken işçi
   sonraki siteyi taşımaz; var olan satır ve kart yöneticinin ne yapacağını söyler (o sitenin kartında
   Tekrar dene) ve işçi beş dakikada bir (yalnız okuyarak) çözülüp çözülmediğine bakar, sonra kendiliğinden
-  sürer.
+  sürer. Sitenin KENDİ tutulan kaydı yüzünden gelen ret "hiçbir şey değişmeden reddedildi" değildir: Ajan
+  önce o kaydı çözmeyi dener, bu sitenin programlarını bir kez yeniden başlatabilir. Bu bekleme de aynı
+  altı saatten sonra vazgeçer; tutulan kaydın satırı ve "tutuldu" işaretiyle biter, asla ikinci bir
+  taşımayla değil.
 - **Bilerek geri konan bir site.** Yönetici bir sitenin zamanlanmış görevlerini cron'a geri koyduğunda
   ("Görevleri cron'a geri koy", §9.3) site işaretlenir (`site_tasks_put_back_v1`) ve işçi onu, sonraki
   sürümlerde de, yönetici o sitenin kartından yeniden taşıyana kadar rahat bırakır: taşımanın bir hata
@@ -703,7 +751,11 @@ değişmedi; yalnız onu kimin başlattığı ve ekranların ne sunduğu değiş
   sitenin kartında tek bir sakin satır okur: "Siteler sınırlarının içine alınıyor (3 / 12) — bir şey
   yapmanız gerekmiyor" ("Sites are being moved into their limits (3 / 12) — you do not need to do
   anything"); listeyle birlikte yeniden okunur ve tur bitince gider (tutulan bir kaydı beklerken
-  gösterilmez). Sınırlarının içindeki bir site bunu kartında söyler, o kadar. Müşteri ve bayi işçiden
+  gösterilmez). Tur taşımak yerine beklerken bunu ve nedenini söyler (panelin güncellemesi, yöneticinin
+  istediği güncelleme, sunucuda başka bir değişiklik, başka bir taşıma, değiştirilen bir site, panelin
+  kendi kaydı); "bir şey yapmanız gerekmiyor" yalnız doğru olduğu yerde. Sitenin kartı, işçinin işi
+  varken ya da site sınırlarının dışındayken kendini yaklaşık dakikada bir yeniden okur ve izlenecek bir
+  şey kalmayınca durur (düzeltme turu G5). Sınırlarının içindeki bir site bunu kartında söyler, o kadar. Müşteri ve bayi işçiden
   hiçbir şey okumaz. Sağlıklı bir sitede "Sınırların içine taşı" ya da "Hepsini taşı" ve birine basmayı
   isteyen bir satır yoktur.
 
@@ -1084,14 +1136,20 @@ tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir
 **alpha.150'den alpha.149'a geri dönmek ve panelin kendiliğinden yaptığı taşıma (D-048).**
 
 - **İşçinin hiçbir şeyi güncelleme tamamlanmadan çalışmaz.** Güncellemenin kendiliğinden geri dönüşü
-  yeni panel başlamadan önce olur (yukarıda) ve işçi yeni panelin parçasıdır: o panelin başlangıcından
-  beş dakika sonra başlar ve her siteden önce panelin güncellemesi kabul edilmiş ya da sürüyorken,
-  sunucu başka bir değişiklikle meşgulken (Ajan'ın kendi hazır olma bilgisi) ve Ajan `update_running`
-  (31 dakikadan kısa süre önce açılmış, kuyrukta ya da süren bir güncelleme kaydı) ya da
-  `update_unreadable` ile reddederken bekler. Bileşen testi `TestTheWorkerStartsOnlyAfterTheGate`
-  (`cmd/panel/site_auto_move_test.go`) bunlardan biri sürerken hiçbir şeyin gönderilmediğini ve hiçbir
-  sitenin işaretlenmediğini, panelin kendi kapısı çıkarıldığında aynı testin başarısız olduğunu kanıtlar.
-  Kendiliğinden geri dönüş bu yüzden işçinin taşıdığı hiçbir site ve hiçbir işaret bulmaz.
+  yeni panel başlamadan önce olur (yukarıda) ve işçi yeni panelin parçasıdır. Tamamlanma işaretine dek
+  kapısını kapatanlar (düzeltme turu G1, §8.4): Ajan'ın kendi kuralı (güncellemenin işlem
+  işaretçilerinden biri `/var/lib/celikpanel-release-transaction` içinde durdukça, geri dönüşün kendi
+  işaretçileri dahil, her taşıma `update_running` ile; klasör okunamıyorsa `update_unreadable` ile
+  reddedilir), sunucunun değişiklik kilidi (betikler tutarken hazır olma bilgisi `host_lock` der),
+  Ajan'ın kendi güncelleme kaydı (31 dakikadan kısa süre önce açılmış, kuyrukta ya da süren) ve beş
+  dakikalık ilk bekleme. Panelin kendi bilgisi (bu sürecin kabul ettiği güncelleme) güncellenen panelin
+  ilk sürecinde yanlıştır ve orada hiçbir şeyi kapatmaz. `TestTheUpdatesPendingMarkerRefusesEveryMove` ve
+  `TestTheUpdatesPendingMarkerRefusesTheTasksMoves` (`cmd/agent`) işaretçinin her taşımayı hiçbir şey
+  değişmeden reddettiğini; `TestTheWorkerStartsOnlyAfterTheGate` (`cmd/panel/site_auto_move_test.go`)
+  gerçek hazır olma okumasıyla kilit tutulurken ya da Ajan reddederken hiçbir şeyin gönderilmediğini ve
+  hiçbir sitenin işaretlenmediğini kanıtlar. Kendiliğinden geri dönüş bu yüzden işçinin taşıdığı hiçbir
+  site ve hiçbir işaret bulmaz. `update.sh` panel çalışırken ve tamamlanma işareti silinmeden önce
+  öldürülürse işaretçi kalır ve Ajan'ın kuralı ileri tamamlama onu silene dek her taşımayı yine reddeder.
 - **Ürünün dışında geri alınan tamamlanmış bir güncelleme** (ürün yolu değil, yukarıda): işçinin taşıdığı
   programlar birim dosyalarında `Slice=celiksite_<id>.slice` satırını korur; alpha.149 dilimi tanır
   (alpha.148'inkidir), dilim dosyası durdukça bu satırı korur ve onları orada başlatır; kendi "Sınırların
@@ -1099,8 +1157,12 @@ tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir
   söylediği gibidir (zamanlayıcı olarak çalışmayı sürdürürler; alpha.149'un Zamanlanmış görevler ekranı
   onları okuyamaz). İşçinin işaretleri (`panel_settings` `site_auto_move_v1` ve `site_tasks_put_back_v1`)
   alpha.149'un okumadığı ayarlardır: orada hiçbir şey yapmazlar; sonraki alpha.150 ya da daha yenisi
-  onları bulur (başka bir sürümün işaretleri yok sayılır). alpha.149 hâlâ dışarıdaki bir sitede düğmesini
-  yine sunar; orada hiçbir şey kendiliğinden taşınmaz.
+  onları bulur (başka bir sürümün işaretleri yok sayılır; siteyi içeri almamış bir taşımanın işaretleri
+  hariç, onları taşır, §8.4). alpha.149 hâlâ dışarıdaki bir sitede düğmesini yine sunar; orada hiçbir şey
+  kendiliğinden taşınmaz.
+- **Bilinen sınır:** tamamlanmış bir güncelleme ürünün dışında geri alınırsa, işçinin taşıdığı her sitenin
+  (yalnız yöneticinin bastığı sitelerin değil) zamanlanmış görevleri alpha.149'un ekranının gösteremediği
+  zamanlayıcılar olarak kalır ve bu hesapların her biri için `crontab -e` kapalı kalır.
 
 ## 9. Sitenin zamanlanmış görevleri kendi sınırları içinde (S4 R2b)
 

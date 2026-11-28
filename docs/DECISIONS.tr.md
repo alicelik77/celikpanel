@@ -43,10 +43,13 @@ yalnız bir hatanın yanında sunulur.** Sitenin sınırları için (alpha.150):
   yeniden; panelin güncellemesi sırasında asla, bir sayfa okunduğu için asla (D-024).
 - Her site kurulu panel sürümü başına bir kez denenir, asla bir döngüde değil; işaret
   `panel_settings` içindedir (şema adımı yok). Reddedilen, geri konan, süresi dolan ya da sonucu
-  bilinmeyen bir taşıma kendiliğinden yeniden denenmez: Şu anki sorunlar'da tek satır nedeni, kimin
-  yapacağını söyler ve Tekrar dene sunar (aynı taşıma). Kendiliğinden geçen bir neden (site
-  değiştiriliyor, panelin güncellemesi, başka bir taşıma) hata değildir. Tutulan bir taşıma kaydı, bir
-  basışı durdurduğu gibi, çözülene kadar turu durdurur.
+  bilinmeyen bir taşıma o sürümde de sonraki bir sürümde de kendiliğinden yeniden denenmez (düzeltme
+  turu G4): Şu anki sorunlar'da tek satır nedeni, kimin yapacağını söyler ve Tekrar dene sunar (aynı
+  taşıma). Hiçbir turun taşımadığı, sınırlarının dışındaki bir site de aynı satırı alır (G2).
+  Kendiliğinden geçen bir neden (site değiştiriliyor, panelin güncellemesi, başka bir taşıma) hata
+  değildir. Tutulan bir taşıma kaydı, bir basışı durdurduğu gibi, çözülene kadar turu durdurur.
+  Güncellemenin tamamlanma işaretinden önce hiçbir şey taşınmaz: güncellemenin işlem işaretçilerinden
+  biri durdukça Ajan her taşımayı reddeder (G1).
 - Sunucu sahibinin olan sahibinde kalır (D-022): sahibin değiştirdiği ya da yerleştirdiği bir birim,
   önceki bir koruma, zamanlayıcının yeniden üretemediği bir satırı olan crontab, sahibin kendi
   `cron.allow` dosyası. Bunlar algılanır ve kimin yapacağıyla adlandırılır, asla üzerine yazılmaz ve

@@ -801,17 +801,52 @@ and the update's gate) is unchanged, only who starts it and what the screens off
 - **How.** Each site through the same press the administrator's action used: the scheduled
   tasks first (§9.3), then the programs, with one fresh request id per site
   (`auto-<random>`), audited as `site.limits_move` with `automatic: true`.
-- **The gate.** Before each site it waits while the panel's own update is admitted or running
-  (the panel's own word), while the server is busy with another change (the Agent's own readiness:
-  another change, package manager work), and while a move the
-  administrator pressed runs. The Agent refuses a move while an update record is queued or
-  running and while another move holds its claim, also across a restart of the panel (the
-  claim is the Agent's, never a variable of the panel). A refusal for such a reason is not a
-  failure: the site goes to the end of the run and is tried again after a minute, doubling up
-  to ten; after six hours of such refusals it is marked failed with that reason.
-- **Once per site per installed version, never a loop.** Before the move is sent the site is
-  marked "started" in `panel_settings` `site_auto_move_v1` (with the panel's version and build;
-  marks of another version count as none, so each version tries a site still outside once). No
+- **The gate** (fix round G1). What keeps the worker from moving anything before the panel's
+  update is complete, in this order:
+  1. **The Agent's own rule.** The move's claim (every move, Try again, the tasks' move, the
+     undo and the rebuild take it) refuses `update_running` while any marker of the update's
+     transaction exists in `/var/lib/celikpanel-release-transaction` (`quiesce.pending`,
+     `active`, `completion.pending`, `scheduler-restore.pending`; `update.sh`, `rollback.sh`
+     and the two finalize scripts write and remove them through
+     `deploy/release-transaction-guard.sh`; an automatic return takes `active` over as a
+     rollback and finishes through `completion.pending` too), and `update_unreadable` while that
+     folder or a marker cannot be inspected. It holds whoever holds the server's change lock: a
+     restart of the server inside the update's window frees the lock between the finalizer's
+     attempts, and the rule still holds until the completion mark is removed. Read only.
+  2. **The server's change lock.** The Agent's readiness says `host_lock` while the update's
+     scripts hold it (they hold it while the updated panel starts, until the completion mark is
+     removed); the worker waits.
+  3. **The Agent's own update record**: a queued or running record created less than 31
+     minutes ago refuses (`update_running`), an unreadable one changed within that time too.
+  4. **The first wait** of five minutes after the panel's start.
+  The panel's own word (an update this process admitted) closes the gate only in the process
+  that admitted the update, never in the updated panel's first process. A move the
+  administrator pressed makes the worker wait. A refusal for such a reason is not a failure:
+  the site goes to the end of the run and is tried again after a minute, doubling up to ten;
+  after six hours of such refusals it is marked failed with that reason (nothing was sent; a
+  later version tries it again). While it waits the calm line says so (below). The component
+  tests `TestTheUpdatesPendingMarkerRefusesEveryMove` and `…RefusesTheTasksMoves`
+  (`cmd/agent`) and `TestTheWorkerStartsOnlyAfterTheGate` (`cmd/panel`: the real readiness
+  read with the lock held, then the Agent's refusal) are the component proof; the lab's stretched
+  window step is the system proof.
+- **The panel's update during a run** (fix round G3). The update is refused only while one
+  site is moving. When the worker (not an administrator's press) is moving it, the refusal says
+  that this one site's move ends within about 12 minutes (the panel's wait for one move, the
+  bound) and that the panel starts no other site meanwhile; the worker then starts no further
+  site for 30 minutes or until an update is admitted, whichever comes first (then the update's
+  own gate holds it). Only that refusal records the wish, never a page being read or a status
+  poll; it is kept in memory, so a panel restart loses it, which only lets the worker go on and
+  never moves anything twice. Nothing starts the update by itself. The move's claim is released
+  before the reading that follows a move.
+- **Once per site, never a loop.** Before the move is sent the site is
+  marked "started" in `panel_settings` `site_auto_move_v1` (with the panel's version and build).
+  Marks "moved", "left" and a failure that only records waiting count once per version: the next
+  version tries such a site again if it is still outside. The marks of a move that was attempted
+  and did not bring the site inside (failed, stopped for its time, not known, kept, and a
+  "started" nobody settled) are carried to later versions (fix round G4): a site whose program
+  does not come up in its slice is not restarted at every panel update; its line and Try again
+  stay until Try again brings it inside or the site is deleted. A record written before G4 has
+  the same keys and reads the same way. No
   schema step: the panel already keeps its other site-limit records in `panel_settings`. A mark
   that cannot be written means nothing is sent; a record that cannot be read means no site is
   moved by itself. After the answer the mark says what came of it: moved; left (the programs
@@ -821,7 +856,21 @@ and the update's gate) is unchanged, only who starts it and what the screens off
   **None of these is tried again by the worker.** A site whose move failed, stopped for its time,
   ended unknown or left a record that was settled since, and that is still outside its limits,
   is ONE Problems now line per site (`site_auto_move_failed`, administrator): why, and **Try
-  again**, which is the same move (`POST /api/v1/domains/{id}/site-limits/move`). A site left for
+  again**, which is the same move (`POST /api/v1/domains/{id}/site-limits/move`). The words say
+  only what is known (fix round G5): "put back as it was" only where the programs' part put the
+  site back and the tasks changed nothing; the programs put back after the tasks moved, a move
+  that stopped without reporting a put-back, a tasks refusal, the panel's own record that could
+  not be read or written, each has its own words. **No site stays outside without a line**
+  (fix round G2): while no run is scheduled, running or waiting, a site outside its limits
+  whatever its mark (moved before and outside again, for example its slice file deleted or a
+  program written outside later; no mark; a "started" nobody settled) has the same line and Try
+  again; it is not moved again by itself in this version, and no periodic pass looks for it.
+  A reading of the sites that fails does not give up: it is tried again every ten minutes, and
+  after an hour without one Problems now has ONE line (`site_auto_move_unread`: the sites are
+  not yet inside their limits, because the Agent did not answer or the panel's own list of sites
+  could not be read; the administrator checks the Agent, `sudo systemctl status
+  celikpanel-agent`, or the panel's journal; the work goes on by itself once a reading
+  succeeds, and the line goes). A site left for
   the server owner's reason is no to-do: its card names the reason with who acts and offers Try
   again for once it is changed, and the owner's own lines (`cron.allow`, a crontab line not made
   here) stay as they were. The administrator's own Try again is recorded the same way, so the
@@ -833,7 +882,10 @@ and the update's gate) is unchanged, only who starts it and what the screens off
 - **A kept record stops the run**, as it stops a press: the worker does not move the next site
   while a move record is kept; the existing line and card say what the administrator does
   (Try again on that site's card), and the worker reads every five minutes (a reading only)
-  whether it was settled, then goes on by itself.
+  whether it was settled, then goes on by itself. A refusal because of the site's OWN kept
+  record is not "refused before anything changed": the Agent first tries to settle that record,
+  which can restart the site's programs once. That wait gives up after the same six hours,
+  ending in the kept record's line and a "kept" mark, never in a second move.
 - **A site put back on purpose.** When the administrator puts a site's scheduled tasks back
   into cron ("Put the tasks back into cron", §9.3), the site is marked
   (`site_tasks_put_back_v1`) and the worker leaves it alone, also in later versions, until the
@@ -843,7 +895,12 @@ and the update's gate) is unchanged, only who starts it and what the screens off
   Home, in Problems now and on each site's card: "Sites are being moved into their limits (3 /
   12) — you do not need to do anything" ("Siteler sınırlarının içine alınıyor (3 / 12) — bir şey
   yapmanız gerekmiyor"); it reads again with the list and goes when the run ends (not while it
-  waits for a kept record). A site inside its limits says so on its card and that is all. A
+  waits for a kept record). While the run waits instead of moving it says so and why (the
+  panel's update, the update the administrator asked for, another change on the server, another
+  move, a site being changed, the panel's own record), and "you do not need to do anything" only
+  where that is true. The site's card reads itself again about once a minute while the worker
+  has work or the site is outside its limits, and stops when there is nothing to follow (fix
+  round G5). A site inside its limits says so on its card and that is all. A
   customer and a reseller read nothing of the worker. There is no "Move into the limits" or
   "Move all" on a healthy site and no line asking to press one.
 
@@ -1244,15 +1301,22 @@ a way back.
 **Going back to alpha.149 from alpha.150, and the move made by the panel itself (D-048).**
 
 - **Nothing of the worker runs before the update is complete.** The update's automatic return
-  happens before the new panel starts (above), and the worker is part of the new panel: it
-  starts five minutes after that panel's start, and before each site it waits while the
-  panel's update is admitted or running, while the server is busy with another change (the Agent's own readiness) and
-  while the Agent refuses with `update_running` (an update record queued or running,
-  created less than 31 minutes ago) or `update_unreadable`. The component test
-  `TestTheWorkerStartsOnlyAfterTheGate` (`cmd/panel/site_auto_move_test.go`) proves that nothing
-  is sent and no site is marked while any of these holds, and that the same test fails when the
-  panel's own gate is taken out. An automatic return therefore finds no site moved by the
-  worker and no mark of it.
+  happens before the new panel starts (above), and the worker is part of the new panel. What
+  closes its gate until the completion mark (fix round G1, §8.4): the Agent's own rule (every
+  move is refused with `update_running` while a marker of the update's transaction exists in
+  `/var/lib/celikpanel-release-transaction`, a return's own markers included, and with
+  `update_unreadable` while that folder cannot be read), the server's change lock (the
+  readiness says `host_lock` while the update's scripts hold it), the Agent's own update record
+  (queued or running, created less than 31 minutes ago), and the first wait of five minutes.
+  The panel's own word (an update this process admitted) is false in the updated panel's first
+  process and closes nothing there. The component tests `TestTheUpdatesPendingMarkerRefusesEveryMove`
+  and `TestTheUpdatesPendingMarkerRefusesTheTasksMoves` (`cmd/agent`) prove that the marker refuses
+  every move before anything changes; `TestTheWorkerStartsOnlyAfterTheGate`
+  (`cmd/panel/site_auto_move_test.go`) proves with the real readiness read that nothing is sent and
+  no site is marked while the lock is held or the Agent refuses. An automatic return therefore
+  finds no site moved by the worker and no mark of it. If `update.sh` itself is killed while the
+  panel runs and before the completion mark is removed, the marker stays and the Agent's rule
+  still refuses every move until the forward completion has removed it.
 - **A completed update undone outside the product** (not a product path, above): the programs
   the worker moved keep `Slice=celiksite_<id>.slice` in their unit files; alpha.149 knows the
   slice (it is alpha.148's), keeps that line while the slice file exists and starts them there,
@@ -1260,8 +1324,12 @@ a way back.
   says for a site moved by the administrator (they keep running as timers; alpha.149's Scheduled
   tasks screen cannot read them). The worker's marks (`panel_settings` `site_auto_move_v1`, and
   `site_tasks_put_back_v1`) are settings alpha.149 does not read: they do nothing there, and a
-  later alpha.150 or newer finds them (marks of another version count as none). alpha.149 again
+  later alpha.150 or newer finds them (marks of another version count as none, except the marks
+  of a move that did not bring the site inside, which it carries, §8.4). alpha.149 again
   offers its button on a site still outside; nothing moves by itself there.
+- **Known limit:** after a completed update is undone outside the product, the scheduled tasks
+  of every site the worker moved (not only of the sites an administrator pressed) stay timers
+  that alpha.149's screen cannot show, and `crontab -e` stays closed for each of those accounts.
 
 ## 9. A site's scheduled tasks inside its limits (S4 R2b)
 

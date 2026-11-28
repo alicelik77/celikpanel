@@ -45,10 +45,13 @@ an action is offered only next to a failure.** For the site's limits (alpha.150)
   the panel's update and never because a page was read (D-024).
 - Each site is tried once per installed panel version, never in a loop; the mark lives in
   `panel_settings` (no schema step). A move that was refused, put back, stopped for its time or
-  whose end is not known is not tried again by itself: one Problems now line says why, who acts
-  and offers Try again (the same move). A reason that clears by itself (the site being changed,
-  the panel's update, another move) is not a failure. A kept move record stops the run until it
-  is settled, as it stops a press.
+  whose end is not known is not tried again by itself, in that version or a later one (fix round
+  G4): one Problems now line says why, who acts and offers Try again (the same move). A site
+  outside its limits that no run is moving has the same line (G2). A reason that clears by itself
+  (the site being changed, the panel's update, another move) is not a failure. A kept move
+  record stops the run until it is settled, as it stops a press. Nothing is moved before the
+  update's completion mark: the Agent refuses every move while a marker of the update's
+  transaction exists (G1).
 - What is the server owner's stays the owner's (D-022): a unit the owner changed or placed, an
   earlier protection, a crontab with a line the timers do not reproduce, the owner's own
   `cron.allow`. They are detected and named with who acts, never overwritten and never shown as
