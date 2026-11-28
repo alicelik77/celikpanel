@@ -148,6 +148,9 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 	case agentAnsweredExactly(err, transport.CronCommandTooLong):
 		writeCodedError(w, http.StatusBadRequest, errCodeCronCommandTooLong, cronCommandTooLongMessage, "")
 		return
+	case agentRefusedCronLineBreak(err):
+		writeCodedError(w, http.StatusBadRequest, errCodeCronTaskLineBreak, cronTaskLineBreakMessage, "")
+		return
 	case agentAnsweredExactly(err, transport.SiteTasksEnvValue):
 		writeCodedError(w, http.StatusConflict, errCodeSiteTasksEnvValue, siteTasksEnvValueMessage, "")
 		return
@@ -202,6 +205,44 @@ const (
 	errCodeSiteTasksLimitsMissing = "SITE_TASKS_LIMITS_MISSING"
 	siteTasksLimitsMissingMessage = "The task was saved, but it does not run yet: this site's limits file is not in place on the server, and no task runs outside the site's limits. The administrator opens the subscription's limits and saves them (or the server owner checks /etc/systemd/system); then save the task again."
 )
+
+// A task is one line (alpha.150 lab W2): a schedule, command or description
+// with a line break (or a NUL) would write crontab lines nobody asked for, so
+// it is refused before the Agent is asked, with words, as the Agent refuses it
+// too (cron_rpc.go rejectCrontabInjection, before anything is read or
+// written). Its answer was a 500 before. Who acts: whoever writes the task.
+// Görev tek satırdır: satır sonu olan alan Agent'a sorulmadan reddedilir.
+const (
+	errCodeCronTaskLineBreak = "CRON_TASK_LINE_BREAK"
+	cronTaskLineBreakMessage = "A task is one line, and its command, schedule or description has a line break, so nothing was saved. " +
+		"Write the command on one line, give each further command a task of its own, or put the commands into a script file and run the script from the task."
+)
+
+// cronLineBreakFields are the Agent's own refusals of a field with a line
+// break (cron_rpc.go rejectCrontabInjection), answered with the same words.
+var cronLineBreakFields = []string{"schedule", "command", "comment"}
+
+// refuseCronLineBreak answers 400 CRON_TASK_LINE_BREAK when any value holds a
+// line break or a NUL; nothing reaches the Agent then.
+func refuseCronLineBreak(w http.ResponseWriter, values ...string) bool {
+	for _, value := range values {
+		if strings.ContainsAny(value, "\n\r\x00") {
+			writeCodedError(w, http.StatusBadRequest, errCodeCronTaskLineBreak, cronTaskLineBreakMessage, "")
+			return true
+		}
+	}
+	return false
+}
+
+// agentRefusedCronLineBreak: the Agent's own answer for such a field.
+func agentRefusedCronLineBreak(err error) bool {
+	for _, field := range cronLineBreakFields {
+		if agentAnsweredExactly(err, "cron "+field+" must not contain line breaks") {
+			return true
+		}
+	}
+	return false
+}
 
 // agentAnsweredWithPrefix: err is the Agent's own RPC answer starting with
 // this exact code text (the rest names what is wrong on that server).

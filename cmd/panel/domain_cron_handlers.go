@@ -141,6 +141,10 @@ func (p *Panel) handleAddCronJob(w http.ResponseWriter, r *http.Request, tenant 
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	// alpha.150 lab W2: one line per task, refused with words.
+	if refuseCronLineBreak(w, req.Schedule, req.Command, req.Comment) {
+		return
+	}
 	if !requireCronVersion(w, req.Version) {
 		return
 	}
@@ -183,6 +187,9 @@ func (p *Panel) handleUpdateCronJob(w http.ResponseWriter, r *http.Request, tena
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if refuseCronLineBreak(w, req.Schedule, req.Command, req.Comment) {
 		return
 	}
 	if !requireCronVersion(w, req.Version) {
