@@ -44,15 +44,15 @@ E-posta bölümündeki **Web posta** kutusunda **Webmail’i Aç** düğmesi var
 
 ## Posta programı ayarları {#mail-programs}
 
-**Ayarlar** sekmesindeki **Posta istemcisi kurulumu** Thunderbird, Outlook, Apple Mail ya da telefon için gerekenleri gösterir. `example.com` için değerler:
+**Ayarlar** sekmesindeki **Posta istemcisi kurulumu** Thunderbird, Outlook, Apple Mail ya da telefon için gerekenleri gösterir. `magaza.celikpanel.net` için değerler:
 
 | | Sunucu | Port | Güvenlik |
 |---|---|---|---|
-| Gelen (IMAP) | `mail.example.com` | 993 | SSL/TLS |
-| Gelen (POP3) | `mail.example.com` | 995 | SSL/TLS |
-| Giden (SMTP) | `mail.example.com` | 587 | STARTTLS |
+| Gelen (IMAP) | `mail.magaza.celikpanel.net` | 993 | SSL/TLS |
+| Gelen (POP3) | `mail.magaza.celikpanel.net` | 995 | SSL/TLS |
+| Giden (SMTP) | `mail.magaza.celikpanel.net` | 587 | STARTTLS |
 
-**Kullanıcı adı** her zaman tam e-posta adresidir, örneğin `ayse@example.com`; parola posta kutusunun parolasıdır. Giden sunucu da aynı girişi ister.
+**Kullanıcı adı** her zaman tam e-posta adresidir, örneğin `bilgi@magaza.celikpanel.net`; parola posta kutusunun parolasıdır. Giden sunucu da aynı girişi ister.
 
 ## Spam'e düşen postalar {#authentication}
 

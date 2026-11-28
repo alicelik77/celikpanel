@@ -121,8 +121,9 @@ var readSideDoorsAfterMove = func(p *Panel) {
 // administrator's explicit "close it again" (empty at each start).
 var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context, reclose, version string) (transport.SideDoorsResponse, error) {
 	var response transport.SideDoorsResponse
+	slices := p.allSiteSlices(ctx)
 	err := p.withStandaloneAgentMutation(ctx, sideDoorsJobKind, sideDoorsJobTarget, "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := transport.SideDoorsRequest{ServiceMutationBinding: binding, ReClose: reclose, Version: version}
+		request := transport.SideDoorsRequest{ServiceMutationBinding: binding, ReClose: reclose, Version: version, Slices: slices}
 		if err := p.callAgentContext(callCtx, "Agent.CloseSideDoorsV1", &request, &response); err != nil {
 			return err
 		}
@@ -132,6 +133,37 @@ var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context, reclose, ve
 		return nil
 	})
 	return response, err
+}
+
+// allSiteSlices is every site's slice with its subscription's limits (S4 R2b
+// fix round): the step's re-render of moved sites' timers puts a missing
+// limits file back from it before a timer runs. A site whose limits cannot
+// be read is left out (its timers are then held if its file is missing).
+func (p *Panel) allSiteSlices(ctx context.Context) []transport.SiteSlice {
+	if p == nil || p.db == nil {
+		return nil
+	}
+	sites, err := p.siteLimitSites(ctx, 0)
+	if err != nil {
+		log.Printf("side doors: the sites' limits could not be read: %v", err)
+		return nil
+	}
+	limits := map[int]settingLimits{}
+	var out []transport.SiteSlice
+	for _, s := range sites {
+		l, ok := limits[s.SubscriptionID]
+		if !ok {
+			read, err := subscriptionSettingLimits(ctx, p.db.GetDB(), s.SubscriptionID)
+			if err != nil {
+				continue
+			}
+			l, limits[s.SubscriptionID] = read, read
+		}
+		if slice := siteSliceFromLimits(s.SiteID, s.Domain, l); slice != nil {
+			out = append(out, *slice)
+		}
+	}
+	return out
 }
 
 // closeSideDoorsOnce is one attempt: done is true when the outcome is final.
@@ -225,6 +257,14 @@ func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.Sid
 		out := previous
 		if fresh.At != nil {
 			out.At = fresh.At
+		}
+		// S4 R2b (alpha.150): cron.allow and the lingering rule are closed
+		// again the same way.
+		if fresh.Cron != nil {
+			out.Cron = fresh.Cron
+		}
+		if fresh.Linger != nil {
+			out.Linger = fresh.Linger
 		}
 		for _, row := range fresh.StockPools {
 			replaced := false
@@ -448,7 +488,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch request.Target {
-	case transport.SideDoorsReCloseAt:
+	case transport.SideDoorsReCloseAt, transport.SideDoorsReCloseCron, transport.SideDoorsReCloseLinger:
 		request.Version = ""
 	case transport.SideDoorsReCloseStockPool:
 		if !sideDoorsPHPVersion.MatchString(request.Version) {
@@ -613,11 +653,22 @@ func sideDoorState(state *transport.SideDoorsState, target, version string) stri
 	if state == nil {
 		return ""
 	}
-	if target == transport.SideDoorsReCloseAt {
+	switch target {
+	case transport.SideDoorsReCloseAt:
 		if state.At == nil {
 			return ""
 		}
 		return state.At.State
+	case transport.SideDoorsReCloseCron:
+		if state.Cron == nil {
+			return ""
+		}
+		return state.Cron.State
+	case transport.SideDoorsReCloseLinger:
+		if state.Linger == nil {
+			return ""
+		}
+		return state.Linger.State
 	}
 	for _, pool := range state.StockPools {
 		if pool.Version == version {
@@ -631,7 +682,7 @@ func sideDoorState(state *transport.SideDoorsState, target, version string) stri
 func sideDoorClosed(state *transport.SideDoorsState, target, version string) bool {
 	switch sideDoorState(state, target, version) {
 	case transport.SideDoorsAtWritten, transport.SideDoorsAtCurrent:
-		return target == transport.SideDoorsReCloseAt
+		return target == transport.SideDoorsReCloseAt || target == transport.SideDoorsReCloseCron || target == transport.SideDoorsReCloseLinger
 	case transport.SideDoorsStockTurnedOff, transport.SideDoorsStockOff:
 		return target == transport.SideDoorsReCloseStockPool
 	}

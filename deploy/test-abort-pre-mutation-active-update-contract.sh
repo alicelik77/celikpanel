@@ -143,6 +143,8 @@ require_text 'pre-ledger stage contains payload beyond the exact reviewed allowl
     "exact pre-ledger payload allowlist is missing"
 require_text "expected_entries=\$'celikpanel.db\\nquiesce-coordinators.tsv\\nservice-states.tsv\\nsnapshot-transition.state'" \
     "exact database-snapshot four-file allowlist is missing"
+require_text 'pre-ledger stage boot record is not a regular file' \
+    "the saved states' boot record is not limited to a regular file"
 require_text '"$links" == 1 && "$size" -gt 0 && "$size" -le 2147483648 ]]; then' \
     "staged database exact metadata and bounded-size proof is missing"
 require_text '[[ "$digest" == "$EXPECTED_STAGE_DATABASE_SHA256" ]]' \

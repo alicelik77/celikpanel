@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -80,13 +81,16 @@ var (
 	sandboxUnitDir   = unitDir
 )
 
-func sandboxNativeFiles() ([]sandboxNativeFile, error) {
+// sandboxNativeFiles are the sandbox's native files; submission writes the
+// SMTP block with the exception for this server's own submission services
+// (S4 R2b fix round: only while they are CelikPanel's own, site_tasks_mail.go).
+func sandboxNativeFiles(submission bool) ([]sandboxNativeFile, error) {
 	dir, err := sandboxUnitDir()
 	if err != nil {
 		return nil, err
 	}
 	return []sandboxNativeFile{
-		{Kind: "sandbox_egress", Path: filepath.Join(sandboxEgressDir, filepath.Base(sitesandbox.EgressFile)), Body: sitesandbox.EgressRuleset()},
+		{Kind: "sandbox_egress", Path: filepath.Join(sandboxEgressDir, filepath.Base(sitesandbox.EgressFile)), Body: sitesandbox.EgressRulesetWith(submission)},
 		{Kind: "sandbox_egress_guard", Path: filepath.Join(sandboxEgressDir, filepath.Base(sitesandbox.EgressGuardScript)), Body: sitesandbox.EgressGuardScriptText()},
 		{Kind: "sandbox_egress_unit", Path: filepath.Join(dir, sitesandbox.EgressGuardUnit), Body: sitesandbox.EgressGuardServiceText()},
 		{Kind: "sandbox_egress_timer", Path: filepath.Join(dir, sitesandbox.EgressGuardTimer), Body: sitesandbox.EgressGuardTimerText()},
@@ -197,7 +201,8 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 	}
 	sandboxEgressMu.Lock()
 	defer sandboxEgressMu.Unlock()
-	files, err := sandboxNativeFiles()
+	submission, why := siteSubmissionStateNow()
+	files, err := sandboxNativeFiles(submission == transport.MailSubmissionOurs)
 	if err != nil {
 		return err
 	}
@@ -205,7 +210,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		return fmt.Errorf("the sandbox folder %s: %v", sandboxEgressDir, err)
 	}
 	ledger := readSandboxLedger()
-	changed := false
+	changed, rules, ownerFile := false, false, ""
 	record := map[string]sandboxLedgerEntry{}
 	for _, f := range files {
 		result, err := services.ApplyManagedSiteFile(f.managed(ledger[f.Path].RenderSHA256), nil, nil)
@@ -215,6 +220,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		switch result.Outcome {
 		case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated, transport.SiteFileOutcomeTaken:
 			changed = true
+			rules = rules || f.Kind == "sandbox_egress"
 			record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 		case transport.SiteFileOutcomeUnchanged:
 			if ledger[f.Path].RenderSHA256 != result.RenderSHA256 {
@@ -223,6 +229,9 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 			}
 		case transport.SiteFileOutcomeKept:
 			log.Printf("site sandbox: %s was changed on this server and is kept (%s); CelikPanel's text is in %s", f.Path, result.State, result.PendingPath)
+			if f.Kind == "sandbox_egress" {
+				ownerFile = f.Path
+			}
 		default:
 			return fmt.Errorf("%s could not be written (%s %s): %s", f.Path, result.Outcome, result.Reason, result.Detail)
 		}
@@ -237,8 +246,38 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 		}
 	}
+	// A changed rule set (S4 R2b: the submission exception added or taken
+	// away) reaches the running table at once; loading the file again is
+	// atomic and keeps the set's members (EgressRuleset).
+	if rules {
+		if err := sandboxReloadEgress(); err != nil {
+			return err
+		}
+	}
+	// The record says what decides (second fix round): the server owner's
+	// kept file decides, not what CelikPanel would have written.
+	if ownerFile != "" {
+		submission, why = transport.MailSubmissionOwnerFile, ownerFile+" was changed on this server and is kept; whether sites reach this server's submission ports is what that file says"
+	}
+	recordMailSubmission(submission, why)
 	if out, err := appUnitSystemctl(systemctlArgs("enable", "--now", sitesandbox.EgressGuardTimer)...); err != nil {
 		return fmt.Errorf("start %s: %v: %s", sitesandbox.EgressGuardTimer, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// siteSubmissionStateNow is siteSubmissionState (a test seam).
+var siteSubmissionStateNow = siteSubmissionState
+
+// sandboxReloadEgress loads the SMTP block's file again (a test seam). The
+// launch names nft literally (fix round: no computed launch passes the
+// launch guard by its file name alone).
+var sandboxReloadEgress = func() error {
+	path := filepath.Join(sandboxEgressDir, filepath.Base(sitesandbox.EgressFile))
+	cmd := exec.Command("/usr/sbin/nft", "-f", path)
+	cmd.Env = []string{}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("nft -f %s: %v: %s", path, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
@@ -292,7 +331,7 @@ func (a *Agent) SandboxCapsV1(_ *transport.Empty, resp *transport.SandboxCapsRes
 	}
 	resp.Generation = sitesandbox.Generation
 	resp.SMTPRejects = -1
-	if files, err := sandboxNativeFiles(); err == nil {
+	if files, err := sandboxNativeFiles(recordedMailSubmission() == transport.MailSubmissionOurs); err == nil {
 		result, _, _ := services.InspectManagedSiteFile(files[0].managed(readSandboxLedger()[files[0].Path].RenderSHA256))
 		resp.EgressFile = result.State
 	}

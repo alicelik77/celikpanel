@@ -168,7 +168,9 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   (a floor; server default 5) are checked when a task is added or its schedule changes
   (`cron_limits.go`): the smallest gap between two runs within a day is read from the minute and
   hour fields (`@hourly`, `@daily`… too). A task whose schedule is kept is not held by a newer
-  limit (P5), the crontab lines stay plain, and the administrator is not held by them.
+  limit (P5), the crontab lines stay plain, and the administrator is not held by them. The same
+  checks hold for a moved site's tasks (S4 R2b), whose lines live in its task file and run as
+  timers in its slice (docs/SITE-SANDBOX.md §9).
 - **Database connections (done):** `db.max_user_connections` is the engine's own limit on the
   user's role: MariaDB `ALTER USER 'u'@'localhost' WITH MAX_USER_CONNECTIONS n`, PostgreSQL
   `ALTER ROLE "u" CONNECTION LIMIT n` (on the cluster the server's driver reaches, as every
@@ -356,11 +358,14 @@ line (which change, how many sites, why), and the panel writes those sites again
 The server's own limits screen does not preview a lowered `site.*` key (declared). The keys
 `db.statement_seconds` and
 `db.idle_in_transaction_seconds` are defaults a user's own session can change; the form says
-so, and `db.temp_file_mb` is a firm limit. **Not bounded by these keys yet:** a site's programs
-not yet moved into its slice (and such a program again after each restart of the server until
-it is moved), its PHP (R3), its scheduled tasks and user managers a site account keeps running
-(R2b). How the slice works, which programs are in it, and what people read when a limit is
-reached: docs/SITE-SANDBOX.md §8.
+so, and `db.temp_file_mb` is a firm limit. **Since S4 R2b (22 November 2026) a moved site's
+scheduled tasks run as timers in the same slice**, under the same three limits (new sites from
+the start; an existing site with the administrator's move; docs/SITE-SANDBOX.md §9). **Not
+bounded by these keys yet:** a site's programs not yet moved into its slice (and such a program
+again after each restart of the server until it is moved), the crontab of a site not yet moved,
+its PHP (R3), and a user manager a site account already kept running before R2b. How the slice
+works, which programs and tasks are in it, and what people read when a limit is reached:
+docs/SITE-SANDBOX.md §8 and §9.
 
 **Disk limits.** `site.disk_mb` is not a key of this step. Where the hosting file system is
 not mounted with project quotas (typical ext4 roots of Debian 13 and Ubuntu 24.04, whose

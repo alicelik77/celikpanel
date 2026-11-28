@@ -65,7 +65,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA… siz@dizustu
 **Komut satırı (SSH)**, aboneliğinizin klasörüne kapatılmış ve yalnız temel dosya araçlarını içeren bir terminal açar. Yalnız gerekiyorsa açın; dosya erişimiyle aynı yoldan: işaretleyin, sonra **Değişikliği gözden geçir** ve **Değişikliği uygula**. Aynı kullanıcı adıyla, parolanız ya da anahtarınızla bağlanın:
 
 ```
-ssh -p 22 kullanici@sunucu.example.com
+ssh -p 22 kullanici@magaza.celikpanel.net
 ```
 
 **FTP, SFTP ve SSH** parçasının gösterdiği sunucu adını, portu ve kullanıcı adını kullanın; bu örnekten farklı olabilirler. **Komut satırı (SSH)** aboneliğinizin planında yoksa sayfa bunu söyler. Dosya erişimi bundan etkilenmez; sağlayıcınız komut satırını planınıza ekleyebilir.

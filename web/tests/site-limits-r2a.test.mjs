@@ -154,17 +154,15 @@ test('a lowered limit lists the sites whose programs would be stopped, in the ch
   for (const part of ['title', 'body', 'action']) assert.ok(trSiteLimitsScreens[`pnow.site_limits_unsupported.${part}`]);
 });
 
-test('sites whose programs run outside their limits are one administrator line with words in both languages', () => {
+test('sites outside their limits are no to-do; one the panel could not move by itself is one administrator line with Try again', () => {
+  // alpha.150 (D-048): the panel moves every site by itself; the line of S4 R2b ("Move all") is gone,
+  // and a site whose move did not bring it inside is one line per site, in the lane's words.
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
-  assert.ok(list && list[1].includes("'site_programs_outside'"), 'the list shows the kind');
-  for (const part of ['title', 'body', 'action']) {
-    assert.ok(enSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `English ${part}`);
-    assert.ok(trSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `Turkish ${part}`);
+  assert.ok(list && list[1].includes("'site_auto_move_failed'") && !list[1].includes("'site_limits_outside'"), 'the list shows the new kind, not the to-do');
+  assert.ok(!/move_all|MoveAllSites|site_programs_outside/.test(problems), 'no "Move all" and no kind of the earlier to-do');
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) {
+    assert.match(words['pnow.site_auto_move_failed.title'], /\{domain\}/);
+    assert.ok(words['pnow.site_auto_move_failed.body'] && words['pnow.site_auto_move_failed.action']);
   }
-  // It names the sites and the one action on the site's page, in that action's own words.
-  assert.match(enSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
-  assert.match(trSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
-  assert.ok(enSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${enSiteLimitsScreens['slim.move.button']}”`));
-  assert.ok(trSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${trSiteLimitsScreens['slim.move.button']}”`));
 });

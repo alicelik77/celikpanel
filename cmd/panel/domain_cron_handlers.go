@@ -67,15 +67,13 @@ func (p *Panel) handleDomainCronJobs(w http.ResponseWriter, r *http.Request) {
 	// burada iddia edilmez, agent tarafından yeniden türetilip kanıtlanır.
 	// SiteUsername tek yönlü değildir; tek başına bir kullanıcı adı hangi
 	// kiracıyı kastettiğini söyleyemez.
-	tenant := transport.CronTenant{
-		SubscriptionID: domain.SubscriptionID,
-		DomainID:       domain.ID,
-		Domain:         domain.Name,
-	}
+	// S4 R2b: the site and its slice travel too; the Agent decides from its
+	// own files whether the site's tasks run as timers or in cron.
+	tenant := p.cronTenantFor(r.Context(), domain.SubscriptionID, domain.ID, domain.Name)
 
 	switch r.Method {
 	case "GET":
-		p.handleListCronJobs(w, tenant)
+		p.handleListCronJobs(w, r, tenant)
 	case "POST":
 		if r.URL.Query().Get("keep") != "" {
 			p.handleKeepCronLine(w, r, tenant)
@@ -91,7 +89,7 @@ func (p *Panel) handleDomainCronJobs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Panel) handleListCronJobs(w http.ResponseWriter, tenant transport.CronTenant) {
+func (p *Panel) handleListCronJobs(w http.ResponseWriter, r *http.Request, tenant transport.CronTenant) {
 	var resp transport.ListCronJobsResponse
 
 	err := p.callAgent("Agent.ListCronJobs", &transport.ListCronJobsRequest{CronTenant: tenant}, &resp)
@@ -108,6 +106,13 @@ func (p *Panel) handleListCronJobs(w http.ResponseWriter, tenant transport.CronT
 	// S4 R1: this site's lines not made in CelikPanel, for the
 	// administrator's Problems now; a removal clears it here.
 	p.noteSiteCrontabOutside(context.Background(), tenant.DomainID, resp.OutsideLines)
+	// S4 R2b: a crontab that came back for a moved site is the server
+	// owner's; only the administrator reads its lines (a customer cannot act
+	// on it).
+	if caller := currentCaller(r); caller == nil || !caller.hasAccountRole(roleAdmin) {
+		resp.Reappeared = nil
+		resp.LeftUnits = nil
+	}
 
 	json.NewEncoder(w).Encode(resp)
 }
@@ -134,6 +139,10 @@ func (p *Panel) handleAddCronJob(w http.ResponseWriter, r *http.Request, tenant 
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	// alpha.150 lab W2: one line per task, refused with words.
+	if refuseCronLineBreak(w, req.Schedule, req.Command, req.Comment) {
 		return
 	}
 	if !requireCronVersion(w, req.Version) {
@@ -178,6 +187,9 @@ func (p *Panel) handleUpdateCronJob(w http.ResponseWriter, r *http.Request, tena
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if refuseCronLineBreak(w, req.Schedule, req.Command, req.Comment) {
 		return
 	}
 	if !requireCronVersion(w, req.Version) {

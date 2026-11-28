@@ -12,7 +12,7 @@ A website such as WordPress keeps its content in a database. CelikPanel creates 
 
 The quickest way is from the domain itself. Open the domain, then its **Databases** section, and press **Create database**:
 
-1. Type a **Database name**. The panel puts the domain in front of it: for `example.com` and `shop`, the full name is `example_com_shop`.
+1. Type a **Database name**. The panel puts the domain in front of it: for `magaza.celikpanel.net` and `shop`, the full name is `magaza_celikpanel_net_shop`.
 2. Choose the **Database engine**.
 3. Choose a **Password**.
 4. Press **Create database**.

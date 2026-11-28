@@ -148,7 +148,7 @@ curl --fail --show-error --location --proto '=https' --tlsv1.2 \
 sh /tmp/celikpanel-get.sh
 
 # Veya tam bir değişmez sürümü sabitleyin
-sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.149
+sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.150
 ```
 
 İlk kurulum sırasında terminal bağlantısı kesilirse aynı kurulum komutunu
@@ -236,8 +236,8 @@ izlenir ve sabitlenir.
 `make dist-sign` yalnız isteğe bağlı yerel GPG ürün akışı için kullanılabilir:
 
 ```bash
-make dist-sign VERSION=v0.1.0-alpha.149 SIGNING_KEY=<tam-anahtar-parmak-izi>
-gpg --verify dist/celikpanel-v0.1.0-alpha.149.tar.gz.asc dist/celikpanel-v0.1.0-alpha.149.tar.gz
+make dist-sign VERSION=v0.1.0-alpha.150 SIGNING_KEY=<tam-anahtar-parmak-izi>
+gpg --verify dist/celikpanel-v0.1.0-alpha.150.tar.gz.asc dist/celikpanel-v0.1.0-alpha.150.tar.gz
 ```
 
 İsteğe bağlı `.asc` dosyası altı kanonik herkese açık üründen biri değildir;

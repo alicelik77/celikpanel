@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -174,6 +175,9 @@ type siteMoveJournal struct {
 	SliceLedger string                `json:"slice_ledger,omitempty"`
 	SliceAfter  string                `json:"slice_after,omitempty"`
 	Units       []siteMoveJournalUnit `json:"units"`
+	// Tasks (S4 R2b): the move of the site's crontab into timers or its undo
+	// (site_tasks_move.go); a record holds either units or tasks.
+	Tasks *siteTasksJournal `json:"tasks,omitempty"`
 }
 
 // writePrivateFile writes a file of the Agent's private folder durably: a
@@ -461,6 +465,12 @@ func siteMoveRecordSettled(journal *siteMoveJournal, record transport.SiteSliceM
 // lock, then siteSliceMu) and only if it is free at once; otherwise the
 // closing is left for the next read.
 func resolveKeptSiteMove(journal *siteMoveJournal, look map[string]map[string]string) map[string]transport.SiteSliceMoveRecovery {
+	if journal.Tasks != nil {
+		// A record of a site's scheduled tasks (S4 R2b) is settled only by
+		// an action (the Agent's start, Try again, the next move's attempt),
+		// never by a reading.
+		return readSiteMoveOutcomes()
+	}
 	site := strconv.Itoa(journal.SiteID)
 	current := readSiteMoveOutcomes()[site]
 	// Each candidate is checked before the outcome record's lock is taken
@@ -573,11 +583,16 @@ var (
 	siteMoveMargin = 5 * time.Second
 	siteSlicePoll  = 500 * time.Millisecond
 
-	// siteMoveUpdateState (alpha.149 fix round, F6; second fix round, R2):
-	// whether the panel's own update may be in progress, as its durable
-	// records say (read only): "" none, "update_running" or, for a record that
-	// cannot be read, "update_unreadable" (systemUpdateRecordsState).
-	siteMoveUpdateState = func() string { return systemUpdateRecordsState(systemUpdateStateRoot, time.Now()) }
+	// siteMoveUpdateState (alpha.149 fix round, F6; second fix round, R2;
+	// alpha.150 automatic move fix round, G1): whether the panel's own update
+	// may be in progress, read only: "" none, "update_running" or, for what
+	// cannot be read, "update_unreadable" (siteMoveUpdateStateOf).
+	siteMoveUpdateState = func() string {
+		return siteMoveUpdateStateOf(siteMoveReleaseTransactionRoot, systemUpdateStateRoot, time.Now())
+	}
+	// siteMoveReleaseTransactionRoot is the update's transaction folder
+	// (/var/lib/celikpanel-release-transaction; tests replace it).
+	siteMoveReleaseTransactionRoot = agentReleaseTransactionRoot
 
 	// siteMoveStartBound (second fix round, R5) is the one total bound of the
 	// systemd calls the Agent's start makes for a kept move record (the
@@ -822,6 +837,33 @@ func siteUnitStateWords(props map[string]string) string {
 	return strings.TrimSpace(props["ActiveState"] + " " + props["SubState"])
 }
 
+// siteUnitPlainState is the unit's state in one plain word for the move's
+// English answer (journal and audit record): systemd's two words repeat one
+// another ("failed failed", alpha.149 lab W2). The reason's State keeps them.
+// Birimin durumu tek düz sözcükle; gerekçenin State alanı systemd'nin sözünü korur.
+func siteUnitPlainState(props map[string]string) string {
+	switch props["ActiveState"] {
+	case "failed":
+		return "failed"
+	case "inactive":
+		return "stopped"
+	case "activating":
+		if siteUnitAutoRestart(props) {
+			return "restarting"
+		}
+		return "starting"
+	case "deactivating":
+		return "stopping"
+	case "active":
+		return "running"
+	case "reloading":
+		return "reloading"
+	case "maintenance":
+		return "in maintenance"
+	}
+	return "in an unknown state"
+}
+
 // siteSliceStartWait is a unit's start wait from its TimeoutStartUSec.
 func siteSliceStartWait(timeoutStart string) time.Duration {
 	wait := siteSliceSettleDefault
@@ -933,13 +975,108 @@ func claimSiteMove() (refusal string, release func()) {
 // (tests only).
 var siteMoveClaimed func()
 
+// siteMovePressDeadline is the deadline of a press's programs part (S4 R2b,
+// alpha.150: one press, one deadline). budgetSeconds is what the Panel says
+// is left of the press after the site's scheduled tasks moved first: absent
+// or 0 means the Agent's own budget; a value is never allowed to give more
+// than that budget; a negative one (never sent) fails towards the smaller,
+// nothing left. No multiplication can overflow: a value above the budget is
+// the budget.
+func siteMovePressDeadline(now time.Time, budgetSeconds int) time.Time {
+	own := now.Add(siteMoveBudget)
+	switch {
+	case budgetSeconds == 0:
+		return own
+	case budgetSeconds < 0:
+		return now
+	case int64(budgetSeconds) >= int64(siteMoveBudget/time.Second):
+		return own
+	}
+	return now.Add(time.Duration(budgetSeconds) * time.Second)
+}
+
 // siteMoveUpdateRefusal is the English text of the update_running refusal;
-// siteMoveUpdateUnreadable of update_unreadable (second fix round, R2).
+// siteMoveUpdateUnreadable of update_unreadable (second fix round, R2; G1:
+// also the update's transaction folder, which ends only when it can be read).
 const (
 	siteMoveUpdateRefusal    = "the panel's update is in progress; nothing was moved. Move the site after the update has finished"
 	siteMoveUpdateUnreadable = "a record of the panel's update could not be read, so it is not known whether an update is in progress; nothing was moved. " +
-		"This ends by itself at the latest 31 minutes after that record last changed; the Agent's journal names the file"
+		"The Agent's journal names the file; an update request's record stops counting by itself 31 minutes after it last changed"
 )
+
+// siteMoveUpdateStateOf (alpha.150 automatic move fix round, G1) is the
+// update's gate of every move, Try again, tasks move, undo and rebuild (they
+// all claim through claimSiteMove). It is a rule of the Agent's own, read
+// only, that fails towards "the update is not finished":
+//   - while any marker of the update's transaction exists in
+//     /var/lib/celikpanel-release-transaction (quiesce.pending, active,
+//     completion.pending, scheduler-restore.pending; written and removed by
+//     deploy/release-transaction-guard.sh for update.sh and the finalize
+//     scripts, a return's own markers included: a return takes over "active"
+//     as operation=rollback and finishes through completion.pending), the
+//     answer is "update_running": the update has not reached its completion
+//     mark, whether or not its scripts hold the server's change lock right
+//     now (a restart of the server in that window frees it between the
+//     finalizer's attempts); when the only marker is an update's
+//     scheduler-restore.pending (the update is complete except turning
+//     Certbot's renewal back on), the answer is "update_finishing" instead,
+//     with words of its own (second review, N1), refused the same way;
+//   - a transaction folder or marker that cannot be inspected answers
+//     "update_unreadable" (it does not end until it can be read);
+//   - otherwise the update's request records (systemUpdateRecordsState).
+//
+// Güncellemenin işlem işaretçilerinden biri durdukça (tamamlanma işareti
+// konmadıkça) hiçbir taşıma başlamaz; okunamayan klasör de reddeder.
+func siteMoveUpdateStateOf(transactionRoot, recordsRoot string, now time.Time) string {
+	present, err := persistentReleaseTransactionPresent(transactionRoot)
+	if err != nil {
+		log.Printf("site slice: the panel's update transaction (%s) could not be read (%v); a move is refused until it can be read", transactionRoot, err)
+		return "update_unreadable"
+	}
+	if present {
+		if releaseTransactionOnlySchedulerRestore(transactionRoot) {
+			return "update_finishing"
+		}
+		return "update_running"
+	}
+	return systemUpdateRecordsState(recordsRoot, now)
+}
+
+// releaseTransactionOnlySchedulerRestore (alpha.150 second review, N1) says
+// whether the only marker left is an update's scheduler-restore.pending: the
+// update is installed and complete, and only its last step (switching
+// Certbot's automatic renewal back on) has not finished; the recovery runner
+// (celikpanel-release-recovery.timer) repeats that step. It only chooses the
+// refusal's words ("update_finishing"); the move is refused either way. Any
+// other marker, a return's marker (operation=rollback), or anything that
+// cannot be read answers false: the words of an update in progress.
+func releaseTransactionOnlySchedulerRestore(root string) bool {
+	for _, marker := range agentReleaseTransactionMarkers {
+		_, err := os.Lstat(filepath.Join(root, marker))
+		if marker == "scheduler-restore.pending" {
+			if err != nil {
+				return false
+			}
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+	}
+	path := filepath.Join(root, "scheduler-restore.pending")
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 512 {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return slices.Contains(strings.Split(string(raw), "\n"), "operation=update")
+}
+
+// siteMoveUpdateFinishing is the English text of update_finishing (the
+// recovery's own words for that step: cmd/recovery, update_finishing_scheduler).
+const siteMoveUpdateFinishing = "the panel's update is installed, but its last step, turning automatic certificate renewal (Certbot) back on, has not finished; nothing was moved. " +
+	"The release recovery repeats that step by itself (sudo journalctl -u celikpanel-release-recovery.service); move the site once it has finished"
 
 // siteMoveRefusalText is the English text of a claim's refusal.
 func siteMoveRefusalText(refusal string) string {
@@ -948,6 +1085,8 @@ func siteMoveRefusalText(refusal string) string {
 		return siteMoveUpdateRefusal
 	case "update_unreadable":
 		return siteMoveUpdateUnreadable
+	case "update_finishing":
+		return siteMoveUpdateFinishing
 	}
 	return "another move into a site's limits is running; nothing was changed"
 }
@@ -1069,7 +1208,9 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	// Second fix round (R4): one press, one deadline. Settling this site's
 	// own kept record and the move that follows share the move's budget,
 	// which stays below the Panel's bound of the call.
-	deadline := time.Now().Add(siteMoveBudget)
+	// S4 R2b (alpha.150): when the site's scheduled tasks moved first in the
+	// same press, the Panel sends what is left of the press's deadline.
+	deadline := siteMovePressDeadline(time.Now(), req.BudgetSeconds)
 	siteMu := siteMutationMutex(s.SiteID)
 	if !siteMu.TryLock() {
 		refuse("site_busy", "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute")
@@ -1451,7 +1592,7 @@ func moveOneSiteUnit(m siteMoveUnit, siteID int, journal *siteMoveJournal) (outc
 		reason.Ports = siteSlicePortList(m.ports)
 		return "", "answer", &siteMoveError{reason: reason, err: fmt.Errorf("%d seconds after the restart whether it listens on its ports (%s) could not be read (ss)", seconds, siteSlicePorts(m.ports))}, false
 	}
-	return "", "restart", &siteMoveError{reason: reason, err: fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, m.unit)}, false
+	return "", "restart", &siteMoveError{reason: reason, err: fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", siteUnitPlainState(props), seconds, m.unit)}, false
 }
 
 // siteMoveError is a step's failure with its reason's code (alpha.149, lab
@@ -1573,7 +1714,7 @@ func siteUnitPutBackFailure(unit, verdict string, props map[string]string, wait 
 		reason.Ports = siteSlicePortList(ports)
 		return transport.SiteMoveUnverified, reason, fmt.Errorf("it runs where it ran %d seconds after the restart, but whether it listens on a port could not be read (ss)", seconds)
 	}
-	return transport.SiteMoveFailed, reason, fmt.Errorf("it is not running: %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, unit)
+	return transport.SiteMoveFailed, reason, fmt.Errorf("it is not running: %s %d seconds after the restart (journalctl -u %s says why)", siteUnitPlainState(props), seconds, unit)
 }
 
 // --- At the Agent's start ------------------------------------------------------
@@ -1778,6 +1919,9 @@ func recoverSiteSliceMoveAtStart() *siteMoveRecovered {
 	journal := loadSiteMoveJournalForRecovery()
 	if journal == nil {
 		return nil
+	}
+	if journal.Tasks != nil {
+		return recoverSiteTasksRecord(journal, time.Now().Add(siteMoveStartBound), true)
 	}
 	earlier := siteMoveFreshOutcomes(journal)
 	outcomes := map[string]string{}
@@ -1985,6 +2129,9 @@ func recoverSiteSliceMove(deadline time.Time, tryAgain bool) *siteMoveRecovered 
 	journal := loadSiteMoveJournalForRecovery()
 	if journal == nil {
 		return nil
+	}
+	if journal.Tasks != nil {
+		return recoverSiteTasksRecord(journal, deadline, false)
 	}
 	earlier := siteMoveFreshOutcomes(journal)
 	outcomes := map[string]string{}

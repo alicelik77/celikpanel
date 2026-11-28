@@ -1,0 +1,7 @@
+{
+  "site_move_running": {
+    "accepted": false,
+    "error": "a site is being moved into its limits or its scheduled tasks are being changed; the update was not started. Wait until that has finished, then press the update again",
+    "reason": "site_move_running"
+  }
+}

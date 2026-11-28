@@ -12,7 +12,7 @@ WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda Ma
 
 En kısa yol alan adının kendisidir. Alan adını, sonra **Veritabanları** bölümünü açıp **Veritabanı oluştur** düğmesine basın:
 
-1. Bir **Veritabanı adı** yazın. Panel adın önüne alan adını ekler: `example.com` ve `magaza` için tam ad `example_com_magaza` olur.
+1. Bir **Veritabanı adı** yazın. Panel adın önüne alan adını ekler: `magaza.celikpanel.net` ve `siparis` için tam ad `magaza_celikpanel_net_siparis` olur.
 2. **Veritabanı motoru** seçin.
 3. Bir **Parola** belirleyin.
 4. **Veritabanı oluştur** düğmesine basın.

@@ -517,10 +517,35 @@ func writePanelUpdateAgentFailure(w http.ResponseWriter, err error) {
 // Paket yöneticisi etkin diye reddedilen başlatma, diğer değişikliklerle aynı
 // kodu, nedeni ve cümleyi alır; yalnız agent'ın tipli nedeni bunu seçer.
 // writePanelUpdateSiteMoveRunning: the update was not started because a
-// site's programs are being moved into their limits (alpha.149, lab D5).
+// site is being moved into its limits (alpha.149, lab D5) or its scheduled
+// tasks are being changed (alpha.150: their move, undo and rebuild hold the
+// same claim).
 func writePanelUpdateSiteMoveRunning(w http.ResponseWriter) {
 	writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_SITE_MOVE_RUNNING",
-		"a site's programs are being moved into their limits; the update was not started. Wait until the move's window has finished, then press the update again", "")
+		"a site is being moved into its limits or its scheduled tasks are being changed; the update was not started. Wait until that has finished, then press the update again", "")
+}
+
+// writePanelUpdateSiteAutoMoveRunning (alpha.150 fix round G3): the update
+// was not started because the panel's own worker is moving one site into its
+// limits. That move ends within the panel's wait for one move
+// (hostingMutationTimeout, 12 minutes: the bound, not a guess); the worker
+// starts no other site meanwhile (siteAutoMoveUpdateHold); the administrator
+// presses the update again then. Nothing here starts the update.
+func writePanelUpdateSiteAutoMoveRunning(w http.ResponseWriter) {
+	writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_SITE_AUTO_MOVE_RUNNING",
+		fmt.Sprintf("one site is being moved into its limits right now, so the update was not started; that move ends within about %d minutes, and the panel starts no other site meanwhile. Press the update again then", int(hostingMutationTimeout/time.Minute)), "")
+}
+
+// refusePanelUpdateForSiteMove answers an update refused because a site is
+// being moved; when the panel's own worker moves it, the worker holds its
+// next site for the update (G3). Only this refusal records that.
+func refusePanelUpdateForSiteMove(w http.ResponseWriter) {
+	if siteMoveBusyByWorker() {
+		noteSiteAutoUpdateWanted()
+		writePanelUpdateSiteAutoMoveRunning(w)
+		return
+	}
+	writePanelUpdateSiteMoveRunning(w)
 }
 
 func writePanelUpdateStartHostBusy(w http.ResponseWriter, reply transport.SystemUpdateStartResponse) bool {
@@ -650,7 +675,7 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 	// move). Nothing is started; pressing update again after the move's
 	// window has ended starts it. The agent refuses it too.
 	if siteMoveBusy() {
-		writePanelUpdateSiteMoveRunning(w)
+		refusePanelUpdateForSiteMove(w)
 		return
 	}
 	if !p.serviceMutationMu.TryLock() {
@@ -698,7 +723,7 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 		(reply.Status != "queued" && reply.Status != "running") {
 		log.Printf("[panel-update] agent refused start: %s", sanitizePanelUpdateSummary(reply.Error))
 		if reply.Reason == transport.HostMutationReasonSiteMove {
-			writePanelUpdateSiteMoveRunning(w)
+			refusePanelUpdateForSiteMove(w)
 			return
 		}
 		if writePanelUpdateStartHostBusy(w, reply) {
@@ -710,6 +735,8 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 	// The scheduled update check and the deferred startup mail work stay
 	// away from an admitted update.
 	p.rememberAdmittedPanelUpdate(request.RequestID, panelUpdateNow())
+	// alpha.150 fix round G3: from here on the update's own gate holds the worker.
+	noteSiteAutoUpdateAdmitted()
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(panelUpdateStartResponse{
 		Accepted: true, RequestID: request.RequestID, Status: reply.Status, Target: request.panelUpdateTarget,

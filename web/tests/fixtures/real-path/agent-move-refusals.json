@@ -1,0 +1,59 @@
+{
+  "another_move": {
+    "done": false,
+    "units": null,
+    "error": "another move into a site's limits is running; nothing was changed",
+    "reason": {
+      "code": "another_move"
+    }
+  },
+  "build": {
+    "done": false,
+    "units": null,
+    "error": "panel/agent build mismatch (panel aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, agent unknown); finish the paired upgrade before moving a site into its limits",
+    "reason": {
+      "code": "build"
+    }
+  },
+  "kept_earlier": {
+    "done": false,
+    "units": null,
+    "error": "an earlier move of site 7 could not be put back completely; its page names each program left and the next step. Nothing new was moved until that is settled",
+    "kept": true,
+    "reason": {
+      "code": "kept_earlier"
+    }
+  },
+  "site_busy": {
+    "done": false,
+    "units": null,
+    "error": "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute",
+    "reason": {
+      "code": "site_busy"
+    }
+  },
+  "update_finishing": {
+    "done": false,
+    "units": null,
+    "error": "the panel's update is installed, but its last step, turning automatic certificate renewal (Certbot) back on, has not finished; nothing was moved. The release recovery repeats that step by itself (sudo journalctl -u celikpanel-release-recovery.service); move the site once it has finished",
+    "reason": {
+      "code": "update_finishing"
+    }
+  },
+  "update_running": {
+    "done": false,
+    "units": null,
+    "error": "the panel's update is in progress; nothing was moved. Move the site after the update has finished",
+    "reason": {
+      "code": "update_running"
+    }
+  },
+  "update_unreadable": {
+    "done": false,
+    "units": null,
+    "error": "a record of the panel's update could not be read, so it is not known whether an update is in progress; nothing was moved. The Agent's journal names the file; an update request's record stops counting by itself 31 minutes after it last changed",
+    "reason": {
+      "code": "update_unreadable"
+    }
+  }
+}

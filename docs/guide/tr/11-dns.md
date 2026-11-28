@@ -20,7 +20,7 @@ Bu parça üç durumdan hangisinin geçerli olduğunu söyler:
 
 1. **Kayıt ekle** düğmesine basın.
 2. **Tür** seçin: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS` ya da `SRV`.
-3. **Ad** (alan adının kendisi için `@`, www.example.com için `www`), **Değer** ve **TTL** yazın. `MX` ve `SRV` için **Öncelik** de girilir.
+3. **Ad** (alan adının kendisi için `@`, www.magaza.celikpanel.net için `www`), **Değer** ve **TTL** yazın. `MX` ve `SRV` için **Öncelik** de girilir.
 4. **Kaydı kaydet** düğmesine basın.
 
 Bir kaydı değiştirmek için çöp kutusu simgesiyle silip yeniden ekleyin. **Kayıtları yenile** bölgeyi yeniden okur.

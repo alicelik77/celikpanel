@@ -13,7 +13,7 @@ import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
 import { confirmAction, followOperation } from '../lib/confirmAction';
-import { siteStoppedLines, sitesStoppedTitle, unappliedKey, unappliedVars, withSiteLimitsLane, type SiteStoppedItem } from '../i18n/siteLimitsLane';
+import { autoMoveLineKey, autoMoveReasonKey, siteStoppedLines, sitesStoppedTitle, unappliedKey, unappliedVars, withSiteLimitsLane, type SiteStoppedItem } from '../i18n/siteLimitsLane';
 import { useDbLimitsWords, type DbLimitsSay } from '../i18n/dbLimits';
 import type { DbLimitsWordKey } from '../i18n/dbLimitsWords/en';
 
@@ -79,12 +79,23 @@ export type ProblemKind =
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
-    | 'site_programs_outside'
     | 'site_limits_unsupported'
     | 'site_limits_unapplied'
     | 'site_memory_default'
     | 'site_move_kept'
-    | 'database_limits_unapplied';
+    | 'database_limits_unapplied'
+    | 'site_auto_move_failed'
+    | 'site_auto_move_unread'
+    | 'cron_allow_lists_sites'
+    | 'cron_not_closed'
+    | 'cron_owner_removed'
+    | 'site_crontab_returned'
+    | 'site_crontab_by_site'
+    | 'site_tasks_held'
+    | 'site_lingering'
+    | 'linger_owner_removed'
+    | 'linger_not_closed'
+    | 'site_user_manager_open';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -127,8 +138,11 @@ const KINDS: readonly ProblemKind[] = [
     'service_operation_unsettled',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
-    // S4 R2a: sites whose programs still run outside their limits (a to-do).
-    'site_programs_outside',
+    // alpha.150 (D-048): sites are moved into their limits by themselves; a
+    // site whose move did not bring it inside, with Try again.
+    'site_auto_move_failed',
+    // alpha.150 fix round G2: the panel could not read the sites for an hour.
+    'site_auto_move_unread',
     // S4 R2a: this server cannot enforce a site's limits at all.
     'site_limits_unsupported',
     // S4 R2a second fix round: a change of limits that did not reach every
@@ -140,6 +154,15 @@ const KINDS: readonly ProblemKind[] = [
     'database_limits_unapplied',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
+    // S4 R2b: cron.allow, a crontab that came back, lingering.
+    'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned',
+    // S4 R2b fix round: a crontab the site's own code can have made; tasks
+    // held for want of the site's limits file.
+    'site_crontab_by_site', 'site_tasks_held',
+    'site_lingering', 'linger_owner_removed', 'linger_not_closed',
+    // S4 R2b second fix round: site accounts whose own service manager can
+    // start (a move that could not be settled is site_move_kept, alpha.150).
+    'site_user_manager_open',
 ];
 // alpha.149: Apply again for those users; the panel runs it apart from the page.
 const DB_LIMITS_URL = '/api/v1/metrics/database-limits/apply';
@@ -163,7 +186,7 @@ export function dbLimitsLine(problem: { name?: string; reason?: string; value: n
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
 const SITE_MEMORY_DEFAULT_URL = '/api/v1/rights/site-memory-default';
-const RECLOSE = ['at', 'stock_pool'];
+const RECLOSE = ['at', 'stock_pool', 'cron', 'linger'];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
@@ -194,7 +217,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number; reason?: string }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -221,8 +244,15 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     // alpha.149 (lab D6): a program put back with its earlier file that does not run is named.
     if (problem.kind === 'site_move_kept' && problem.name) return 'pnow.site_move_kept.body_stopped' as TranslationKey;
+    // alpha.150: a kept record of a site's scheduled tasks says how they run now, when the agent knows it.
+    if (problem.kind === 'site_move_kept' && ['tasks_none', 'tasks_timers', 'tasks_cron'].includes(problem.reason ?? '')) return `pnow.site_move_kept.body_${problem.reason}` as TranslationKey;
     // alpha.149 (lab O3; fix round F9): each site by its own reason; "not known" never "earlier limits"; one site in the singular.
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'body') as TranslationKey;
+    // alpha.150 fix round G2: a site outside again; the sites that could not be read, by why.
+    if (problem.kind === 'site_auto_move_failed' && problem.name === 'outside') return 'pnow.site_auto_move_failed.body_outside' as TranslationKey;
+    if (problem.kind === 'site_auto_move_unread' && problem.reason === 'sites') return 'pnow.site_auto_move_unread.body_sites' as TranslationKey;
+    // Second review (N3): the panel's own record of the moves cannot be read.
+    if (problem.kind === 'site_auto_move_unread' && problem.reason === 'record') return 'pnow.site_auto_move_unread.body_record' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -233,6 +263,7 @@ export function problemTitleKey(problem: { kind: string; name?: string; subject?
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
     // alpha.149 (lab O3; fix round F9).
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'title') as TranslationKey;
+    if (problem.kind === 'site_auto_move_unread' && problem.name === 'record') return 'pnow.site_auto_move_unread.title_record' as TranslationKey;
     // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
         return `pnow.${problem.kind}.title_one` as TranslationKey;
@@ -257,7 +288,12 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits' | 'retry_move'; to?: string };
+    /** alpha.150 (site_auto_move_failed): the site's domain, for its Try again. */
+    domain_id?: number;
+    /** alpha.150 fix round G5 (site_auto_move_failed): which part ended the move, and whether it put the site back. */
+    part?: string;
+    put_back?: boolean;
     /** alpha.149 (database_limits_unapplied): the stored reason as a code. */
     reason?: string;
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
@@ -269,6 +305,14 @@ export interface ProblemsReport {
     checked_at: string;
     problems: Problem[];
     unknown: { source: (typeof SOURCES)[number]; reason: (typeof REASONS)[number] }[];
+    /** alpha.150 (D-048): the panel moving sites into their limits by itself (one calm line, nobody acts). */
+    site_move_progress?: { done: number; total: number; waiting?: string };
+}
+
+function decodeMoveProgress(raw: unknown): ProblemsReport['site_move_progress'] {
+    const p = raw as { done?: unknown; total?: unknown; waiting?: unknown } | null;
+    return p && typeof p === 'object' && typeof p.done === 'number' && typeof p.total === 'number' && p.total > 0
+        ? { done: p.done, total: p.total, waiting: typeof p.waiting === 'string' ? p.waiting : undefined } : undefined;
 }
 
 // A problem of a kind this screen has no words for is left out rather than
@@ -280,6 +324,7 @@ export function decodeProblems(raw: unknown): ProblemsReport {
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
         && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
+            : p.action.kind === 'retry_move' ? p.kind === 'site_auto_move_failed' && typeof p.domain_id === 'number' && p.domain_id > 0
             : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'apply_default' ? p.kind === 'site_memory_default'
                 : p.action.kind === 'apply_db_limits' ? p.kind === 'database_limits_unapplied'
                     : p.action.kind === 'start_service' && typeof p.unit === 'string')
@@ -287,7 +332,7 @@ export function decodeProblems(raw: unknown): ProblemsReport {
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
         !!u && SOURCES.includes(u.source) && REASONS.includes(u.reason)
     ));
-    return { checked_at: typeof body.checked_at === 'string' ? body.checked_at : '', problems, unknown };
+    return { checked_at: typeof body.checked_at === 'string' ? body.checked_at : '', problems, unknown, site_move_progress: decodeMoveProgress(body.site_move_progress) };
 }
 
 export function ProblemsNow({
@@ -527,6 +572,23 @@ export function ProblemsNow({
         });
     };
 
+    // alpha.150 (D-048): Try again for a site whose move did not bring it inside: the site's own
+    // move, in the panel's own question and window (the site card's module, fetched on the press).
+    const retryMove = async (problem: Problem) => {
+        setFailed(null);
+        setStarting(problem.key);
+        try {
+            const { retrySiteMove } = await import('./SiteLimitsCard');
+            if (await retrySiteMove(problem.domain_id ?? 0, t) === 'unread') setFailed({ key: problem.key, text: t('slim.unreadLimits') });
+        } catch {
+            setFailed({ key: problem.key, text: t('slim.move.unknown') });
+        } finally {
+            setStarting(null);
+            void handle.retry();
+            invalidate('domains');
+        }
+    };
+
     const remote = handle.remote;
     if (remote.state === 'loading') {
         return quiet ? null : <p className="mb-4 text-sm text-fg-muted" data-problems-now="checking">{t('pnow.checking')}</p>;
@@ -545,7 +607,16 @@ export function ProblemsNow({
     // The database limits line waits for its own words (finding 18).
     const problems = report.problems.filter((p) => !omit.includes(p.kind) && (p.kind !== 'database_limits_unapplied' || dbWords.ready));
     const unknown = report.unknown.filter((u) => !(omit.includes('service_stopped') && u.source === 'services'));
+    // alpha.150 (D-048): one calm line while the panel moves sites into their limits by itself;
+    // it reads again with the list and goes when the run ends. Nobody acts on it.
+    const progress = report.site_move_progress;
+    const moving = progress && (
+        <p className="mb-2 text-sm text-fg-muted" role="status" data-problems-now-moving="">
+            {t(autoMoveLineKey(progress.waiting) as TranslationKey, { done: progress.done, total: progress.total })}
+        </p>
+    );
     if (problems.length === 0 && unknown.length === 0 && !outcome) {
+        if (moving) return <div className="mb-4">{moving}</div>;
         if (quiet) return null;
         return (
             <p className="mb-4 flex items-center gap-2 text-sm text-fg-muted" data-problems-now="none">
@@ -554,10 +625,11 @@ export function ProblemsNow({
             </p>
         );
     }
-    if (problems.length === 0 && quiet && !outcome) return null;
+    if (problems.length === 0 && quiet && !outcome) return moving ? <div className="mb-4">{moving}</div> : null;
 
     return (
         <section className="mb-4" aria-labelledby="problems-now-title" data-problems-now={problems.length > 0 ? 'problems' : 'clear'}>
+            {moving}
             {problems.length > 0 && (
                 <>
                     <h2 id="problems-now-title" className="mb-2 text-sm font-semibold text-fg">{t('pnow.title')}</h2>
@@ -583,6 +655,11 @@ export function ProblemsNow({
                                         </p>
                                         <p className="mt-1 text-sm leading-6 text-fg-muted">{dbLine ? dbLine.body : t(problemBodyKey(problem), vars)}</p>
                                         {dbLine?.why && <p className="mt-1 text-sm leading-6 text-fg" data-problem-db-limits-why="">{dbLine.why}</p>}
+                                        {problem.kind === 'site_auto_move_failed' && (
+                                            <p className="mt-1 text-sm leading-6 text-fg" data-problem-auto-move-why={problem.name ?? ''}>
+                                                {t(autoMoveReasonKey({ state: problem.name, reason: problem.reason, part: problem.part, put_back: problem.put_back }) as TranslationKey)}
+                                            </p>
+                                        )}
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
@@ -606,6 +683,10 @@ export function ProblemsNow({
                                             onClick={() => void start(problem)}
                                         >
                                             {t('pnow.service_stopped.action')}
+                                        </Button>
+                                    ) : problem.action.kind === 'retry_move' ? (
+                                        <Button className="shrink-0 self-start" loading={starting === problem.key} disabled={starting !== null} onClick={() => void retryMove(problem)} data-problem-retry-move="">
+                                            {t('pnow.site_auto_move_failed.action')}
                                         </Button>
                                     ) : problem.action.kind === 'apply_default' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void applyDefault(problem)} data-problem-apply-default="">

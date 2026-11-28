@@ -172,7 +172,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
 		Agent.MailboxOnServerV1 Agent.WebmailAddressFormsV1
 		Agent.ReadSideDoorsV1
-		Agent.SiteSlicesStatusV1
+		Agent.SiteSlicesStatusV1 Agent.SiteTasksMovedV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -222,6 +222,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1 Agent.SitePageCacheClearV1 Agent.SiteLogRetentionV1
 		Agent.GitDeployKeyV1 Agent.GitDeployV1
 		Agent.ApplySiteSlicesV1 Agent.MoveSiteSliceV1
+		Agent.MoveSiteTasksV1 Agent.UndoSiteTasksMoveV1 Agent.RebuildSiteTaskSourceV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -716,6 +717,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SiteSlicesStatusV1": agentRPCStandardReadTimeout,
 	"Agent.ApplySiteSlicesV1":  agentRPCMutationTimeout,
 	"Agent.MoveSiteSliceV1":    agentRPCDeploymentTimeout,
+	// S4 R2b: a site's tasks (the move writes and checks up to 500 timers).
+	"Agent.MoveSiteTasksV1":         agentRPCDeploymentTimeout,
+	"Agent.UndoSiteTasksMoveV1":     agentRPCDeploymentTimeout,
+	"Agent.SiteTasksMovedV1":        agentRPCStandardReadTimeout,
+	"Agent.RebuildSiteTaskSourceV1": agentRPCMutationTimeout,
 
 	// alpha.128 ops: server maintenance (G29 reboot, G31 certificate requests;
 	// an RSA 4096 key can take a few seconds to make).

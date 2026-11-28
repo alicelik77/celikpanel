@@ -693,8 +693,58 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("The programs of %s keep using all their memory (%s times in a day). The site's page says what its plan allows.", subject, n),
 			fmt.Sprintf("%s sitesinin programları belleğin tamamını tekrar tekrar kullanıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
 	case "site_programs_outside":
-		return fmt.Sprintf("The programs of %s sites still run outside their limits (%s). \"Move into the limits\" on each site's Overview restarts them once inside.", n, subject),
-			fmt.Sprintf("%s sitenin programları hâlâ sınırlarının dışında çalışıyor (%s). Her sitenin Genel Bakış sayfasındaki \"Sınırların içine taşı\" onları bir kez yeniden başlatıp içeri alır.", n, subject)
+		// An alert alpha.148 or alpha.149 opened; since alpha.150 the panel
+		// moves the sites by itself (D-048).
+		return fmt.Sprintf("The programs of %s sites ran outside their limits (%s). The panel moves them into their limits by itself; you do not need to do anything.", n, subject),
+			fmt.Sprintf("%s sitenin programları sınırlarının dışında çalışıyordu (%s). Panel onları kendiliğinden sınırlarının içine alır; bir şey yapmanız gerekmiyor.", n, subject)
+	// alpha.150 (site_auto_move.go, D-048).
+	case "site_auto_move_failed":
+		// Fix round G2: also a site that is outside its limits again.
+		return fmt.Sprintf("%s runs outside its limits and is not moved into them by itself again. Problems now says why and offers Try again.", subject),
+			fmt.Sprintf("%s sınırlarının dışında çalışıyor ve kendiliğinden yeniden içine alınmıyor. Nedeni Şu anki sorunlar'da, \"Tekrar dene\" ile.", subject)
+	case "site_auto_move_unread":
+		// Second review (N2, N3): the words follow the line's reason, as
+		// Problems now does (item.name: agent, sites or record).
+		switch item.name {
+		case "sites":
+			return "The panel could not read its own list of sites for an hour, so the sites outside their limits are not moved into them yet. The administrator reads the panel's journal (sudo journalctl -u celikpanel-panel); the panel keeps reading and goes on by itself.",
+				"Panel bir saattir kendi site listesini okuyamadı; bu yüzden sınırlarının dışındaki siteler henüz içine alınmıyor. Yönetici panelin günlüğünü okur (sudo journalctl -u celikpanel-panel); panel okumayı sürdürür ve kendiliğinden devam eder."
+		case "record":
+			return "The panel cannot read its own record of the sites' moves into their limits, so no site is moved into its limits by itself; nothing was changed. The administrator reads the panel's journal (sudo journalctl -u celikpanel-panel). Problems now says the rest.",
+				"Panel sitelerin sınırlarına taşınmasıyla ilgili kendi kaydını okuyamıyor; bu yüzden hiçbir site kendiliğinden sınırlarının içine alınmıyor, hiçbir şey değiştirilmedi. Yönetici panelin günlüğünü okur (sudo journalctl -u celikpanel-panel). Gerisi Şu anki sorunlar'da."
+		}
+		return "The sites could not be read for an hour, so the ones outside their limits are not moved into them yet. The administrator checks CelikPanel's Agent (sudo systemctl status celikpanel-agent); the panel keeps reading and goes on by itself.",
+			"Siteler bir saattir okunamadı; bu yüzden sınırlarının dışındakiler henüz içine alınmıyor. Yönetici CelikPanel Agent'ı denetler (sudo systemctl status celikpanel-agent); panel okumayı sürdürür ve kendiliğinden devam eder."
+	case "cron_allow_lists_sites":
+		return fmt.Sprintf("The server owner's %s lets the accounts of sites whose tasks run in their limits use cron again (%s). Monitoring says what to change.", name, subject),
+			fmt.Sprintf("Sunucu sahibinin %s dosyası, görevleri sınırları içinde çalışan sitelerin hesaplarına yeniden cron izni veriyor (%s). Neyin değişeceği İzleme'de.", name, subject)
+	case "cron_not_closed":
+		return "The accounts of sites whose tasks run in their limits can still install their own cron jobs: CelikPanel did not write /etc/cron.allow. Monitoring says why.",
+			"Görevleri sınırları içinde çalışan sitelerin hesapları hâlâ kendi cron işlerini kurabiliyor: CelikPanel /etc/cron.allow dosyasını yazmadı. Nedeni İzleme'de."
+	case "cron_owner_removed":
+		return "/etc/cron.allow was deleted on this server, so the accounts of sites whose tasks run in their limits can use cron again. Monitoring offers to close it again.",
+			"Bu sunucuda /etc/cron.allow silindi; görevleri sınırları içinde çalışan sitelerin hesapları yeniden cron kullanabiliyor. İzleme yeniden kapatmayı önerir."
+	case "site_crontab_returned":
+		return fmt.Sprintf("A crontab was made again for sites whose tasks run in their limits (%s); its lines run outside the limits. Monitoring says what to do.", subject),
+			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab yapılmış (%s); satırları sınırların dışında çalışıyor. Ne yapılacağı İzleme'de.", subject)
+	case "site_crontab_by_site":
+		return fmt.Sprintf("A crontab exists again for sites whose tasks run in their limits (%s) and runs outside them; cron let these accounts in, so the sites' own code can have made it. Monitoring says what to do.", subject),
+			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab var (%s) ve sınırların dışında çalışıyor; cron bu hesaplara izin verdi, yani sitenin kendi kodu yapmış olabilir. Ne yapılacağı İzleme'de.", subject)
+	case "site_tasks_held":
+		return fmt.Sprintf("The scheduled tasks of %s sites are held: their limits file is not in place (%s), and they do not run until it is back. Monitoring says what to do.", n, subject),
+			fmt.Sprintf("%s sitenin zamanlanmış görevleri bekletiliyor: sınır dosyaları yerinde değil (%s); dosya geri gelene kadar çalışmazlar. Ne yapılacağı İzleme'de.", n, subject)
+	case "site_user_manager_open":
+		return fmt.Sprintf("Site accounts can still start their own service manager by signing in with SFTP, outside their limits (%s). Monitoring gives the command that closes it.", subject),
+			fmt.Sprintf("Site hesapları SFTP ile girince kendi hizmet yöneticilerini hâlâ sınırlarının dışında başlatabiliyor (%s). Bunu kapatan komut İzleme'de.", subject)
+	case "site_lingering":
+		return fmt.Sprintf("Site accounts keep their own programs running outside their limits (lingering: %s). Monitoring gives the command that ends it.", subject),
+			fmt.Sprintf("Site hesapları kendi programlarını sınırlarının dışında çalışır tutuyor (kalıcı oturum: %s). Bunu bitiren komut İzleme'de.", subject)
+	case "linger_owner_removed":
+		return "CelikPanel's lingering rule was deleted on this server, so site accounts can keep their own programs running again. Monitoring offers to close it again.",
+			"CelikPanel'in kalıcı oturum kuralı bu sunucuda silindi; site hesapları yeniden kendi programlarını çalışır tutabiliyor. İzleme yeniden kapatmayı önerir."
+	case "linger_not_closed":
+		return "Site accounts can still keep their own programs running (lingering): CelikPanel's polkit rule is not in place. Monitoring says why.",
+			"Site hesapları hâlâ kendi programlarını çalışır tutabiliyor (kalıcı oturum): CelikPanel'in polkit kuralı yerinde değil. Nedeni İzleme'de."
 	case "site_limits_unsupported":
 		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
 			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."

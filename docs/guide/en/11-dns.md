@@ -20,7 +20,7 @@ It tells you which of three cases applies:
 
 1. Press **Add record**.
 2. Choose the **Type**: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS` or `SRV`.
-3. Type the **Name** (`@` for the domain itself, `www` for www.example.com), the **Value** and the **TTL**. `MX` and `SRV` also take a **Priority**.
+3. Type the **Name** (`@` for the domain itself, `www` for www.magaza.celikpanel.net), the **Value** and the **TTL**. `MX` and `SRV` also take a **Priority**.
 4. Press **Save record**.
 
 To change a record, delete it with the bin icon and add it again. **Refresh records** reads the zone again.

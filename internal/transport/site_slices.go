@@ -122,7 +122,35 @@ type SiteSliceMoveRecovery struct {
 	// complete, so the move's record stays and no site is moved until it is
 	// settled (MoveSiteSliceRequest.Recover tries again).
 	Kept bool `json:"kept,omitempty"`
+	// Tasks and TasksStep (S4 R2b, alpha.150; additive): the record is of
+	// the site's scheduled tasks moving into timers or back into cron, not
+	// of its programs (Units is then empty). Tasks is what the Agent did or
+	// found (moved, put_back, undone, not_tried; unknown while Kept), and
+	// TasksStep the step the record had reached.
+	// TasksSite and TasksAccount name the site and its account for the
+	// server owner's two steps by hand, should Try again not settle it.
+	Tasks        string `json:"tasks,omitempty"`
+	TasksStep    string `json:"tasks_step,omitempty"`
+	TasksSite    int    `json:"tasks_site,omitempty"`
+	TasksAccount string `json:"tasks_account,omitempty"`
+	// TasksRunning (alpha.150; additive): while a tasks record is Kept, how
+	// the site's scheduled tasks run now, as far as the Agent knows it
+	// (SiteTasksRunNone, SiteTasksRunTimers, SiteTasksRunCron; "" when it is
+	// not known), so that the screens say it instead of "may".
+	TasksRunning string `json:"tasks_running,omitempty"`
 }
+
+// How a site's scheduled tasks run while a tasks record is kept
+// (SiteSliceMoveRecovery.TasksRunning).
+const (
+	// SiteTasksRunNone: the crontab is gone and the timers are off; no task
+	// runs until Try again.
+	SiteTasksRunNone = "none"
+	// SiteTasksRunTimers: the tasks run as timers inside the site's limits.
+	SiteTasksRunTimers = "timers"
+	// SiteTasksRunCron: the tasks run from the crontab; timers left are off.
+	SiteTasksRunCron = "cron"
+)
 
 // Recovery outcomes of a unit whose put-back did not complete (the record
 // is kept).
@@ -158,7 +186,8 @@ const (
 // (Seconds, Ports: a put-back that listens on none), still_starting
 // (Seconds), restart_failed, write_failed, record_failed, changed; of the
 // whole move: unsupported, another_move, update_running (the panel's update
-// is in progress), site_busy, kept_earlier, prepare_failed, limits_failed,
+// is in progress), update_finishing (only the update's last step, turning
+// Certbot's renewal back on, has not finished), site_busy, kept_earlier, prepare_failed, limits_failed,
 // bad_request, build, not_finished.
 type SiteMoveReason struct {
 	Code    string `json:"code"`
@@ -278,6 +307,11 @@ type MoveSiteSliceRequest struct {
 	// put-back of the kept record now and moves nothing new; only RequestID
 	// and ExpectedBuildCommit are read.
 	Recover bool `json:"recover,omitempty"`
+	// BudgetSeconds (S4 R2b, alpha.150; additive): what is left of the
+	// press's one deadline when the site's scheduled tasks moved first in the
+	// same press; the Agent's move then takes the smaller of it and its own
+	// budget (0: its own budget).
+	BudgetSeconds int `json:"budget_seconds,omitempty"`
 }
 
 // Outcomes of one unit in a move.
@@ -366,4 +400,7 @@ type MoveSiteSliceResponse struct {
 	// without a break for their start wait but listen on no port. They are
 	// put back (their entries are closed); the page names them.
 	RunsNoPort []string `json:"runs_no_port,omitempty"`
+	// Tasks (S4 R2b) is the Panel's answer for the site's scheduled tasks,
+	// moved by the same action first (the Agent's MoveSiteTasksV1).
+	Tasks *SiteTasksMoveResponse `json:"tasks,omitempty"`
 }

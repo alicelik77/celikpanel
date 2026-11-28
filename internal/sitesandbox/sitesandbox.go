@@ -280,7 +280,7 @@ func (p Profile) Validate() error {
 // install unit, a runtime app's unit or its build (celikrtbuild, a Python
 // app's environment build), or a Node.js site's unit or its install step
 // (celikapp, celikappinst; alpha.127; celikgit, the Git deploy of alpha.128).
-var unitNamePattern = regexp.MustCompile(`^(celiksvc|celiksvcinst|celikrt|celikrtbuild|celikapp|celikappinst|celikgit)-[1-9][0-9]{0,9}\.service$`)
+var unitNamePattern = regexp.MustCompile(`^((celiksvc|celiksvcinst|celikrt|celikrtbuild|celikapp|celikappinst|celikgit)-[1-9][0-9]{0,9}|celikcron-[1-9][0-9]{0,9}-[1-9][0-9]{0,3})\.service$`)
 
 // ValidUnitName reports whether name (with ".service") is a sandboxed unit.
 func ValidUnitName(name string) bool { return unitNamePattern.MatchString(name) }

@@ -170,6 +170,11 @@ type CreateSiteRequest struct {
 	// PHPLimits (alpha.128) are the site's limits: the new pool's process
 	// count is created within them instead of the fixed default (5).
 	PHPLimits SitePHPLimits `json:",omitempty"`
+	// Slice (S4 R2b fix round) is the new site's slice with its limits: its
+	// limits file is put in place with the site, before any task of it can
+	// be switched on. Nil from an older Panel (the first task's save then
+	// brings it).
+	Slice *SiteSlice `json:",omitempty"`
 }
 
 // CreateSiteResponse contains results of site creation

@@ -13,7 +13,7 @@ keywords: [ai, n8n, automation, workflow, open webui, withdrawn, security hold]
 The page says what is still needed, and who provides it:
 
 - **A website and a certificate.** Apps open only over HTTPS. If the domain has no certificate yet, get one first in the **Security** section.
-- **A separate subdomain**, such as `n8n.example.com`, is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed.
+- **A separate subdomain**, such as `n8n.ajans.celikpanel.net`, is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed.
 - **The offer.** Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask.
 - **The server.** n8n needs Node.js 24, which the administrator installs under Components → Node.js; the row says so when it is missing.
 

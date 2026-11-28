@@ -45,7 +45,7 @@
     ],
     "download.how.once.text": [
       {
-        "cite": "docs/DECISIONS.md:3317",
+        "cite": "docs/DECISIONS.md:3374",
         "says": "D-029 · Every state-changing request carries"
       }
     ],
@@ -149,12 +149,12 @@
     ],
     "fig.domain.caption": [
       {
-        "cite": "web/tools/browser-inspect/README.md:781",
-        "says": "the public website's screens, 2026-11-19"
+        "cite": "web/tools/browser-inspect/README.md:803",
+        "says": "2026-11-28, from the alpha.150 release content"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
-        "says": "Published** on 2026-11-20"
+        "cite": "web/tools/browser-inspect/scenarios-batch37.mjs:1",
+        "says": "names and date renewed 2026-11-28"
       },
       {
         "cite": "download-portal/assets/shots/domain-en-light.webp"
@@ -174,13 +174,13 @@
     ],
     "home.licence.caption": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "home.licence.text": [
       {
-        "cite": "docs/DECISIONS.md:38",
+        "cite": "docs/DECISIONS.md:95",
         "says": "1. One flat price per server"
       }
     ],
@@ -278,77 +278,77 @@
     ],
     "licence.ends.from": [
       {
-        "cite": "docs/DECISIONS.md:144",
+        "cite": "docs/DECISIONS.md:201",
         "says": "before the end date: 30, 7 and 1 day before"
       },
       {
-        "cite": "docs/DECISIONS.md:151",
+        "cite": "docs/DECISIONS.md:208",
         "says": "without a licence the panel's management screens"
       }
     ],
     "licence.ends.today": [
       {
-        "cite": "docs/DECISIONS.md:30",
+        "cite": "docs/DECISIONS.md:87",
         "says": "verified for seven days (D-039), the"
       }
     ],
     "licence.from": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "licence.offline.from": [
       {
-        "cite": "docs/DECISIONS.md:48",
+        "cite": "docs/DECISIONS.md:105",
         "says": "4. If CelikPanel's own licence service"
       },
       {
-        "cite": "docs/DECISIONS.md:149",
+        "cite": "docs/DECISIONS.md:206",
         "says": "does not carry it past that date"
       }
     ],
     "licence.offline.today": [
       {
-        "cite": "docs/DECISIONS.md:837",
+        "cite": "docs/DECISIONS.md:894",
         "says": "D-039 · One successful license check"
       }
     ],
     "licence.payment.from": [
       {
-        "cite": "docs/DECISIONS.md:139",
+        "cite": "docs/DECISIONS.md:196",
         "says": "Payment by card through Stripe is the first"
       }
     ],
     "licence.period.from": [
       {
-        "cite": "docs/DECISIONS.md:40",
+        "cite": "docs/DECISIONS.md:97",
         "says": "2. Price lock: the price a"
       },
       {
-        "cite": "docs/DECISIONS.md:148",
+        "cite": "docs/DECISIONS.md:205",
         "says": "A licence ends on its end date"
       }
     ],
     "licence.period.today": [
       {
-        "cite": "docs/DECISIONS.md:28",
+        "cite": "docs/DECISIONS.md:85",
         "says": "`expires_at` is one calendar year after"
       }
     ],
     "licence.price.from": [
       {
-        "cite": "docs/DECISIONS.md:39",
+        "cite": "docs/DECISIONS.md:96",
         "says": "List price 99 USD per year"
       }
     ],
     "licence.trial.from": [
       {
-        "cite": "docs/DECISIONS.md:53",
+        "cite": "docs/DECISIONS.md:110",
         "says": "6. A 30-day trial"
       },
       {
-        "cite": "docs/DECISIONS.md:159",
+        "cite": "docs/DECISIONS.md:216",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
@@ -464,43 +464,43 @@
     ],
     "pricing.def": [
       {
-        "cite": "docs/DECISIONS.md:38",
+        "cite": "docs/DECISIONS.md:95",
         "says": "1. One flat price per server"
       },
       {
-        "cite": "docs/DECISIONS.md:39",
+        "cite": "docs/DECISIONS.md:96",
         "says": "List price 99 USD per year"
       },
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.description": [
       {
-        "cite": "docs/DECISIONS.md:39",
+        "cite": "docs/DECISIONS.md:96",
         "says": "List price 99 USD per year"
       },
       {
-        "cite": "docs/DECISIONS.md:139",
+        "cite": "docs/DECISIONS.md:196",
         "says": "Payment by card through Stripe is the first"
       },
       {
-        "cite": "docs/DECISIONS.md:159",
+        "cite": "docs/DECISIONS.md:216",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
     "pricing.ends.panel": [
       {
-        "cite": "docs/DECISIONS.md:151",
+        "cite": "docs/DECISIONS.md:208",
         "says": "without a licence the panel's management screens"
       },
       {
-        "cite": "docs/DECISIONS.md:154",
+        "cite": "docs/DECISIONS.md:211",
         "says": "entering or renewing a licence, and installing the panel's own"
       },
       {
-        "cite": "docs/DECISIONS.md:155",
+        "cite": "docs/DECISIONS.md:212",
         "says": "The server keeps working"
       },
       {
@@ -510,127 +510,127 @@
     ],
     "pricing.ends.text": [
       {
-        "cite": "docs/DECISIONS.md:148",
+        "cite": "docs/DECISIONS.md:205",
         "says": "A licence ends on its end date"
       },
       {
-        "cite": "docs/DECISIONS.md:144",
+        "cite": "docs/DECISIONS.md:201",
         "says": "before the end date: 30, 7 and 1 day before"
       },
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.beta.text": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.caption": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.counted.text": [
       {
-        "cite": "docs/DECISIONS.md:38",
+        "cite": "docs/DECISIONS.md:95",
         "says": "1. One flat price per server"
       }
     ],
     "pricing.from.id": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.lifetime.text": [
       {
-        "cite": "docs/DECISIONS.md:55",
+        "cite": "docs/DECISIONS.md:112",
         "says": "7. No lifetime licences."
       }
     ],
     "pricing.from.lock.text": [
       {
-        "cite": "docs/DECISIONS.md:40",
+        "cite": "docs/DECISIONS.md:97",
         "says": "2. Price lock: the price a"
       },
       {
-        "cite": "docs/DECISIONS.md:148",
+        "cite": "docs/DECISIONS.md:205",
         "says": "A licence ends on its end date"
       }
     ],
     "pricing.from.move.text": [
       {
-        "cite": "docs/DECISIONS.md:51",
+        "cite": "docs/DECISIONS.md:108",
         "says": "5. Moving a licence to another"
       }
     ],
     "pricing.from.offline.text": [
       {
-        "cite": "docs/DECISIONS.md:48",
+        "cite": "docs/DECISIONS.md:105",
         "says": "4. If CelikPanel's own licence service"
       },
       {
-        "cite": "docs/DECISIONS.md:149",
+        "cite": "docs/DECISIONS.md:206",
         "says": "does not carry it past that date"
       }
     ],
     "pricing.from.payment.text": [
       {
-        "cite": "docs/DECISIONS.md:139",
+        "cite": "docs/DECISIONS.md:196",
         "says": "Payment by card through Stripe is the first"
       }
     ],
     "pricing.from.price.text": [
       {
-        "cite": "docs/DECISIONS.md:39",
+        "cite": "docs/DECISIONS.md:96",
         "says": "List price 99 USD per year"
       }
     ],
     "pricing.from.refund.text": [
       {
-        "cite": "docs/DECISIONS.md:159",
+        "cite": "docs/DECISIONS.md:216",
         "says": "Point 6's 30-day refund is withdrawn"
       }
     ],
     "pricing.from.renewal.text": [
       {
-        "cite": "docs/DECISIONS.md:54",
+        "cite": "docs/DECISIONS.md:111",
         "says": "a reminder 7 days before."
       }
     ],
     "pricing.from.text": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.title": [
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
     "pricing.from.trial.text": [
       {
-        "cite": "docs/DECISIONS.md:53",
+        "cite": "docs/DECISIONS.md:110",
         "says": "6. A 30-day trial"
       },
       {
-        "cite": "docs/DECISIONS.md:159",
+        "cite": "docs/DECISIONS.md:216",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
     "pricing.never.text": [
       {
-        "cite": "docs/DECISIONS.md:101",
+        "cite": "docs/DECISIONS.md:158",
         "says": "What stays unchanged.** D-022: hosted services"
       },
       {
-        "cite": "docs/DECISIONS.md:105",
+        "cite": "docs/DECISIONS.md:162",
         "says": "updates stay available in every licence state"
       },
       {
@@ -644,19 +644,19 @@
     ],
     "pricing.today.check.text": [
       {
-        "cite": "docs/DECISIONS.md:837",
+        "cite": "docs/DECISIONS.md:894",
         "says": "D-039 · One successful license check"
       }
     ],
     "pricing.today.offline.text": [
       {
-        "cite": "docs/DECISIONS.md:837",
+        "cite": "docs/DECISIONS.md:894",
         "says": "D-039 · One successful license check"
       }
     ],
     "pricing.today.period.text": [
       {
-        "cite": "docs/DECISIONS.md:28",
+        "cite": "docs/DECISIONS.md:85",
         "says": "`expires_at` is one calendar year after"
       }
     ],
@@ -880,7 +880,7 @@
     ],
     "sep.sandbox": [
       {
-        "cite": "docs/SITE-SANDBOX.md:14",
+        "cite": "docs/SITE-SANDBOX.md:18",
         "says": "Every customer program runs in one"
       },
       {
@@ -1052,19 +1052,19 @@
     ],
     "spec.licence.v_html": [
       {
-        "cite": "docs/DECISIONS.md:26",
+        "cite": "docs/DECISIONS.md:83",
         "says": "Context.** Every licence is free today"
       },
       {
-        "cite": "docs/DECISIONS.md:39",
+        "cite": "docs/DECISIONS.md:96",
         "says": "List price 99 USD per year"
       },
       {
-        "cite": "docs/DECISIONS.md:56",
+        "cite": "docs/DECISIONS.md:113",
         "says": "Free during the beta"
       },
       {
-        "cite": "docs/DECISIONS.md:57",
+        "cite": "docs/DECISIONS.md:114",
         "says": "starts with 1.0"
       }
     ],
@@ -1178,7 +1178,7 @@
     ],
     "systems.arch.notoffered.4": [
       {
-        "cite": "docs/DECISIONS.md:3536",
+        "cite": "docs/DECISIONS.md:3593",
         "says": "On Arch, PowerDNS is installed only"
       }
     ],

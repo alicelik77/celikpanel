@@ -27,7 +27,16 @@ import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr
 import { enDbLimitsWords } from '../src/i18n/dbLimitsWords/en.ts';
 import { trDbLimitsWords } from '../src/i18n/dbLimitsWords/tr.ts';
 import { enWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/en.ts';
+import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
+import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
 import { trWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/tr.ts';
+import { enSiteTasksScreens as enSiteTasksPart } from '../src/i18n/screens/siteTasks/en.ts';
+import { enSiteTasksProblemsScreens as enSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/en.ts';
+// alpha.150: the part siteTasksProblems holds the words split out of this part.
+const enSiteTasksScreens = { ...enSiteTasksPart, ...enSiteTasksSplit };
+import { trSiteTasksScreens as trSiteTasksPart } from '../src/i18n/screens/siteTasks/tr.ts';
+import { trSiteTasksProblemsScreens as trSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/tr.ts';
+const trSiteTasksScreens = { ...trSiteTasksPart, ...trSiteTasksSplit };
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -45,9 +54,11 @@ test('every kind the list shows has a title, body and action in English and Turk
   // pgLeftovers parts; alpha.144 (merged): its webmail address lines' words
   // are in the webmailAddress part; the site limits lines (S4 R2a) in
   // siteLimits and siteLimitsApply; alpha.149's database limits line in its
-  // own words fetched with the line (src/i18n/dbLimitsWords).
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens, ...enDbLimitsWords };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens, ...trDbLimitsWords };
+  // own words fetched with the line (src/i18n/dbLimitsWords); S4 R2b's lines
+  // (tasks, cron.allow, lingering) in the siteTasks part; alpha.150's line of a site the panel could
+  // not move by itself in the site limits lane, loaded with Problems now (src/i18n/siteLimitsLane).
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens, ...enDbLimitsWords, ...enSiteTasksScreens, ...enSiteLimitsLane };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens, ...trDbLimitsWords, ...trSiteTasksScreens, ...trSiteLimitsLane };
   for (const kind of shown) {
     // alpha.143: mail_signing and mail_autoresponder_foreign have one body
     // per state instead of one body (their own tests check them).

@@ -262,6 +262,9 @@ service auth {
 	}
 
 	resp.Configured = true
+	// S4 R2b fix round: the SMTP block lets sites reach 465/587 only while
+	// they are these entries, unchanged; it follows them now.
+	refreshSandboxEgressIfPresent(ctx)
 	resp.Detail = "submission on 587 (STARTTLS) and 465 (TLS), SASL via Dovecot, sender spoofing blocked"
 	if len(ownerEntries) > 0 {
 		resp.Detail += "; " + strings.Join(ownerEntries, " and ") +

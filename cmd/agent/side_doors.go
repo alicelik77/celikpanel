@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -67,7 +68,7 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 		return nil
 	}
 	switch req.ReClose {
-	case "", transport.SideDoorsReCloseAt:
+	case "", transport.SideDoorsReCloseAt, transport.SideDoorsReCloseCron, transport.SideDoorsReCloseLinger:
 	case transport.SideDoorsReCloseStockPool:
 		if !phpVersionText.MatchString(req.Version) {
 			resp.Error = fmt.Sprintf("invalid PHP version %q", req.Version)
@@ -96,6 +97,17 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 	case transport.SideDoorsReCloseStockPool:
 		state.Scope = transport.SideDoorsScopeReClose
 		state.StockPools = closeStockFPMPoolsFor(ctx, hostStockPoolOps(), stockPoolPass{only: req.Version, reclose: true})
+	case transport.SideDoorsReCloseCron:
+		// S4 R2b (alpha.150, on R1's re-close design): only /etc/cron.allow,
+		// decided and written as at a first start; the owner's undo stays
+		// recorded until the file is written again.
+		state.Scope = transport.SideDoorsScopeReClose
+		cronAllowMu.Lock()
+		state.Cron = closeSiteCronFor(hostSiteCronOps(), 0, true)
+		cronAllowMu.Unlock()
+	case transport.SideDoorsReCloseLinger:
+		state.Scope = transport.SideDoorsScopeReClose
+		state.Linger = closeSiteLingerFor(hostSiteLingerOps(), true)
 	default:
 		state.Tools = closeSideDoorsTools(ctx, hostPHPToolBindOps(), hostSideDoorsToolHooks(), afterPHPToolBound)
 		state.StockPools = closeStockFPMPoolsWith(ctx, hostStockPoolOps())
@@ -103,6 +115,33 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 		// accounts; site crontabs with lines not made in CelikPanel counted.
 		state.At = closeSiteAtWith(ctx, hostSiteAtOps())
 		state.SiteCrontabs = checkSiteCrontabs()
+		// 5 and 6 (S4 R2b, side_doors_cron.go): cron.allow for the moved
+		// sites and the crontabs that came back for them; lingering.
+		cronAllowMu.Lock()
+		state.Cron = closeSiteCronWith(hostSiteCronOps(), 0)
+		cronAllowMu.Unlock()
+		state.Linger = closeSiteLingerWith(hostSiteLingerOps())
+		// Second fix round: a site account's own service manager does not
+		// start at an SFTP login (side_doors_user_manager.go).
+		state.UserManagers = closeSiteUserManagers()
+		// A moved site's task file edited by hand (or a render cut short) is
+		// applied to its timers here, after each start; a missing limits file
+		// is put back from the slices the Panel sent, or the site's timers
+		// are held (fix round: no task runs without the site's limits).
+		slices := map[int]*transport.SiteSlice{}
+		for i := range req.Slices {
+			s := req.Slices[i]
+			if s.SiteID > 0 {
+				slices[s.SiteID] = &s
+			}
+		}
+		n, held := reconcileSiteTimers(slices)
+		if n > 0 {
+			log.Printf("side doors: the timers of %d sites follow their task files again", n)
+		}
+		state.TasksHeld = held
+		// The SMTP block's submission exception follows the mail services.
+		refreshSandboxEgressIfPresent(ctx)
 	}
 	resp.State = &state
 	return nil

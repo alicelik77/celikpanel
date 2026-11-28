@@ -375,6 +375,16 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "site-limits/move":
 		// S4 R2a: the administrator's move of the site's programs into its limits.
 		match.kind, match.methods = "site-limits-move", []string{http.MethodPost}
+	case "site-limits/preview":
+		// S4 R2b: what the move would make of the site's crontab (read only).
+		match.kind, match.methods = "site-limits-preview", []string{http.MethodGet}
+	case "site-limits/tasks-undo":
+		// S4 R2b: the administrator's "Put the tasks back into cron".
+		match.kind, match.methods = "site-limits-tasks-undo", []string{http.MethodPost}
+	case "site-limits/tasks-source":
+		// S4 R2b fix round: a missing task file rebuilt (GET says what it
+		// would contain).
+		match.kind, match.methods = "site-limits-tasks-source", []string{http.MethodGet, http.MethodPost}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -647,6 +657,12 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteLimits(w, r, match.domainID)
 	case "site-limits-move":
 		p.handleDomainSiteLimitsMove(w, r, match.domainID)
+	case "site-limits-preview":
+		p.handleDomainSiteLimitsPreview(w, r, match.domainID)
+	case "site-limits-tasks-undo":
+		p.handleDomainSiteTasksUndo(w, r, match.domainID)
+	case "site-limits-tasks-source":
+		p.handleDomainSiteTaskSource(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":
@@ -1270,6 +1286,8 @@ func main() {
 	panel.orchestrator.SetSiteServerNames(panel.managedSiteHostnames)
 	// alpha.128: a new site's pool starts within its plan's process limit.
 	panel.orchestrator.SetSitePHPLimits(panel.sitePHPLimits)
+	// S4 R2b fix round: a new site's limits file comes with it.
+	panel.orchestrator.SetSiteSlice(panel.siteSliceForSubscription)
 
 	// Development demo accounts (gated behind --demo).
 	// Geliştirme demo hesapları (--demo bayrağının arkasında).
@@ -1614,6 +1632,10 @@ func main() {
 	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
 	// pool off, once after the start (side_doors.go).
 	panel.startSideDoorsClose()
+	// alpha.150 (D-048): every site still outside its limits is moved into
+	// them by the panel itself, some minutes after the start, after the side
+	// doors step, never during the panel's update (site_auto_move.go).
+	panel.startSiteAutoMove()
 	// S4 R2a second fix round: a site's default memory limit is fixed when
 	// first computed (never moved by a later change of the host's memory),
 	// and the sites a change of limits did not reach are written again every

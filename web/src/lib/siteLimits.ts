@@ -5,6 +5,8 @@
 // Bir sitenin programlarının birlikte sınırları: sunucunun yanıtı ve kartın
 // ondan söyledikleri.
 
+import type { TasksPlacement } from './siteTasks';
+
 export type SiteLimitKey = 'site.memory_mb' | 'site.tasks' | 'site.cpu_percent';
 
 export interface SiteLimitValue {
@@ -56,7 +58,8 @@ export interface SiteLimitsView {
     unsupported?: string;
     drop_ins?: string[];
     /** kept: the put-back did not complete; no site is moved until it is settled ("Try again"). */
-    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean };
+    /** tasks* (S4 R2b, alpha.150): the kept record is of the site's scheduled tasks. */
+    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean; tasks?: string; tasks_step?: string; tasks_site?: number; tasks_account?: string; tasks_running?: string };
     /**
      * Database users' values the panel did not write (alpha.149): origin `owner` for a firm limit only an
      * administrator account can set (temporary files, the connection limit); `on_user` for a default changed on
@@ -75,6 +78,50 @@ export interface SiteLimitsView {
     units?: SiteLimitUnit[];
     needs_move?: number;
     busy?: boolean;
+    /** S4 R2b (administrator): where the site's scheduled tasks run. */
+    tasks?: TasksPlacement;
+    /** alpha.150 (D-048, administrator): the panel moving sites by itself; the card's one move action. */
+    auto_move?: AutoMove;
+}
+
+/**
+ * alpha.150 (D-048): every site goes inside its limits by itself. done/total: the run's progress (the calm
+ * line); offer: "retry" next to a move that did not bring this site inside (state, reason), "move" for a site
+ * whose scheduled tasks were put back into cron on purpose. A healthy site's card offers nothing.
+ */
+export interface AutoMove {
+    done?: number;
+    total?: number;
+    /** Fix round G5: the run waits instead of moving, and why. */
+    waiting?: string;
+    offer?: 'retry' | 'move';
+    state?: string;
+    reason?: string;
+    /** Fix round G5: which part ended the move, and whether it put the site back. */
+    part?: string;
+    put_back?: boolean;
+}
+
+function decodeAutoMove(raw: unknown): AutoMove | undefined {
+    const body = raw as AutoMove | null;
+    if (!body || typeof body !== 'object') return undefined;
+    const num = (n: unknown) => (typeof n === 'number' && n >= 0 ? n : undefined);
+    return {
+        done: num(body.done), total: num(body.total),
+        offer: body.offer === 'retry' || body.offer === 'move' ? body.offer : undefined,
+        state: typeof body.state === 'string' ? body.state : undefined,
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+        waiting: typeof body.waiting === 'string' ? body.waiting : undefined,
+        part: typeof body.part === 'string' ? body.part : undefined,
+        put_back: body.put_back === true,
+    };
+}
+
+/** Fix round G5: the card follows the run by itself while the worker has work or the site is outside its limits. */
+export function followsAutoMove(view: SiteLimitsView | undefined): boolean {
+    if (!view?.admin) return false;
+    const tasksOutside = !!view.tasks && !view.tasks.unknown && !view.tasks.moved;
+    return (view.auto_move?.total ?? 0) > 0 || (view.needs_move ?? 0) > 0 || view.applies === 'outside' || tasksOutside;
 }
 
 export interface DbOwnerSetting {
@@ -94,6 +141,15 @@ const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_perce
 const EVENTS: readonly string[] = ['memory', 'tasks', 'tasks_peak', 'cpu', 'memory_other', 'tasks_other'];
 const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent', 'restarting'];
 
+/** S4 R2b: the site's tasks placement (a type-only import keeps this module standalone). */
+function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
+    const body = raw as Partial<TasksPlacement> | null;
+    if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
+    return { moved: body.moved, reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined, by_site: body.by_site === true,
+        mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
+        recovery: typeof body.recovery === 'string' ? body.recovery : undefined, unknown: body.unknown === true };
+}
+
 /** Reads the answer; an answer of another shape is not a card. */
 export function decodeSiteLimits(raw: unknown): SiteLimitsView {
     const body = raw as Partial<SiteLimitsView> | null;
@@ -108,6 +164,8 @@ export function decodeSiteLimits(raw: unknown): SiteLimitsView {
         limits: body.limits.filter((l): l is SiteLimitValue => !!l && KEYS.includes(l.key) && typeof l.value === 'number' && typeof l.set_by === 'string'),
         events: body.events.filter((e): e is SiteLimitEvent => !!e && EVENTS.includes(e.kind) && typeof e.count === 'number' && typeof e.last_at === 'string'),
         units: Array.isArray(body.units) ? body.units.filter((u): u is SiteLimitUnit => !!u && typeof u.unit === 'string' && PLACES.includes(u.placement)) : undefined,
+        tasks: decodeTasksPlacement(body.tasks),
+        auto_move: decodeAutoMove(body.auto_move),
     };
 }
 
@@ -193,11 +251,22 @@ export function moveReasonWords(reason: MoveReason | undefined): { key: string; 
     return { key: `slim.reason.${reason.code}`, values };
 }
 
-const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable'];
+const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable', 'update_finishing', 'build'];
 
 /** Why a whole move did not run, as a catalogue key (the general sentence for every other code). */
 export function moveWhyKey(reason: MoveReason | undefined): string {
     return reason && WHYS.includes(reason.code) ? `slim.why.${reason.code}` : 'slim.why.other';
+}
+
+/**
+ * A move refused before anything changed, for a reason that is not a failure of the site (alpha.150
+ * lab D6): another move, the site being changed, a kept record, the panel's update, a record of it
+ * that cannot be read, an agent of another build, a server that cannot hold limits. The window says
+ * it as a stop with its own words ("nothing was moved"), never as a failure or an unknown result.
+ */
+export function moveRefusedBeforeAnything(answer: MoveAnswer): boolean {
+    return !answer.done && !answer.rolled_back && !answer.time_up && answer.units.length === 0
+        && !!answer.reason && WHYS.includes(answer.reason.code);
 }
 
 export interface MoveAnswer {
@@ -215,12 +284,18 @@ export interface MoveAnswer {
     runs_no_port?: string[];
 }
 
+/**
+ * The move's answer. alpha.150 lab D6: an answer that moved no program carries "units": null (the
+ * Agent's empty list does not survive its transport), so a missing or null list is no program; any
+ * other shape is not an answer and its result stays unknown.
+ */
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     const body = raw as Partial<MoveAnswer> | null;
-    if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(body.units)) throw new Error('shape');
+    const units = body?.units ?? [];
+    if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(units)) throw new Error('shape');
     return {
         done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, kept: body.kept === true,
-        units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
+        units: units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
         reason: body.reason && typeof body.reason.code === 'string' ? body.reason : undefined,
         runs_no_port: Array.isArray(body.runs_no_port) ? body.runs_no_port.filter((u): u is string => typeof u === 'string') : [],
     };

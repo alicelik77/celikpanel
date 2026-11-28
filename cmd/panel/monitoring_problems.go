@@ -85,6 +85,15 @@ type monitoringProblem struct {
 	// (Maintenance; deletion_holding.go). Absent when there is nothing.
 	HoldingCount int   `json:"holding_count,omitempty"`
 	HoldingBytes int64 `json:"holding_bytes,omitempty"`
+	// DomainID (alpha.150, site_auto_move_failed only): the site's domain,
+	// for its Try again (the site's own move, POST
+	// /api/v1/domains/{id}/site-limits/move).
+	DomainID int `json:"domain_id,omitempty"`
+	// Part and PutBack (alpha.150 fix round G5, site_auto_move_failed only):
+	// which part of the move ended it and whether that part put the site
+	// back as it was, so that the words say only what is known.
+	Part    string `json:"part,omitempty"`
+	PutBack bool   `json:"put_back,omitempty"`
 }
 
 type monitoringUnknown struct {
@@ -99,6 +108,10 @@ type monitoringProblemsReport struct {
 	CheckedAt string              `json:"checked_at"`
 	Problems  []monitoringProblem `json:"problems"`
 	Unknown   []monitoringUnknown `json:"unknown"`
+	// SiteMoveProgress (alpha.150, D-048): while the panel moves sites into
+	// their limits by itself, how many of this run are settled. Not a
+	// problem (nobody acts, no alert): the screen shows one calm line.
+	SiteMoveProgress *siteAutoMoveProgress `json:"site_move_progress,omitempty"`
 }
 
 var problemKindOrder = map[string]int{
@@ -157,7 +170,10 @@ var problemKindOrder = map[string]int{
 	"site_memory_repeated": 39,
 	"site_tasks_repeated":  40,
 	"disk_limits_counted":  41,
-	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	// S4 R2a: sites whose programs still run outside their limits (a to-do of
+	// alpha.148 and alpha.149). Since alpha.150 they are moved by themselves
+	// (D-048) and no line is made; the kind stays known for an alert an
+	// earlier release opened.
 	"site_programs_outside": 42,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
 	"site_limits_unsupported": 43,
@@ -170,6 +186,29 @@ var problemKindOrder = map[string]int{
 	"site_move_kept": 46,
 	// alpha.149: database users the database limits did not reach.
 	"database_limits_unapplied": 47,
+	// alpha.150 (D-048): a site whose move into its limits (the panel's own,
+	// or the administrator's Try again) did not bring it inside
+	// (site_auto_move.go). It replaces the to-do of sites outside their
+	// limits: those are moved by themselves.
+	"site_auto_move_failed": 48,
+	// S4 R2b: cron.allow, crontabs that came back, lingering (site_tasks.go).
+	"cron_allow_lists_sites": 49,
+	"cron_not_closed":        50,
+	"cron_owner_removed":     51,
+	"site_crontab_returned":  52,
+	"site_lingering":         53,
+	"linger_owner_removed":   54,
+	"linger_not_closed":      55,
+	// S4 R2b fix round: a crontab the site's own code can have made; moved
+	// sites whose timers are held for want of their limits file.
+	"site_crontab_by_site": 56,
+	"site_tasks_held":      57,
+	// S4 R2b second fix round: site accounts whose own service manager can
+	// still start at an SFTP login.
+	"site_user_manager_open": 58,
+	// alpha.150 fix round G2: the worker that moves sites into their limits
+	// has not been able to read the sites for an hour.
+	"site_auto_move_unread": 59,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -253,6 +292,8 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// alpha.149: database users a plan's database limits did not reach
 	// (database_limits_problems.go).
 	add(p.databaseLimitsProblems(ctx), nil)
+	// alpha.150 (D-048): the panel moving sites into their limits by itself.
+	report.SiteMoveProgress = siteAutoMoveProgressNow()
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

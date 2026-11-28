@@ -310,8 +310,10 @@ const screenPartBudgets = {
   // of "mailDatabases" when the plain reasons of a refused save took it over
   // its ceiling (Turkish 46.04 / 12.83 KiB; 34.27 / 9.82 KiB after). A new
   // part, set with at least 25% headroom from its Turkish file: 11.81 / 3.70
-  // KiB.
-  dbConfig: kib(17.5, 5.5),
+  // KiB. Raised with alpha.150 (who acts when a database deletion's users
+  // were refused, err.DATABASE_DELETE_USERS_LEFT.refused*) to keep 25%
+  // headroom over 19.79 / 5.27 KiB.
+  dbConfig: kib(25, 6.75),
   // v0.1.0-alpha.130: a removed PostgreSQL version's leftover cluster and its
   // "Archive and remove", and the PostgreSQL page's cluster choice
   // (pgc.leftover., pgc.pick., opstep.pgLeftover.), split out of
@@ -419,6 +421,24 @@ const screenPartBudgets = {
   // review of PR #370, finding 18). Lowered from 2.5 / 1.0 KiB; no other
   // part's budget is raised.
   dbLimits: kib(0.6, 0.5),
+  // 22 Nov 2026 (S4 R2b): a site's scheduled tasks inside its limits - each
+  // task's last run on the Scheduled tasks screen (stasks.), the
+  // administrator's move of the crontab and its undo (slim.tasks.), "Move all"
+  // (moveall.) and the Problems now lines of cron.allow, crontabs that came
+  // back and lingering (pnow.). A new part, so no existing part's budget is
+  // raised; set with at least 25% headroom from its Turkish file.
+  // alpha.150 fix round 4 (fourth review N3): raised from 16 to 17 KiB raw
+  // (gzip unchanged) for the card's two ways out of a kept tasks record
+  // whose account has a crontab that is not the recorded one; the way back
+  // by hand moved to siteTasksProblems first, and that part has no room for
+  // these words either. Only this part's ceiling; the entry file is unchanged.
+  siteTasks: kib(17, 5.2),
+  // alpha.150: split out of siteTasks and problemsNow when their words filled
+  // them (the Problems now lines of sites' tasks and their side doors, pnow.,
+  // and "Move all", moveall.). A new part, so no existing part's budget is
+  // raised; set with at least 25% headroom from its Turkish file (6.98 / 2.10
+  // KiB when it was made).
+  siteTasksProblems: kib(8.75, 2.65),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

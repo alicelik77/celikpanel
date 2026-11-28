@@ -16,7 +16,7 @@ A site holds one application, and only an empty site gets one, so nothing of you
 
 - **Needs PHP …**: change the site's PHP version in **PHP settings**, in the same **Site** section.
 - Missing PHP extensions: the administrator installs the packages named.
-- The site's public folder already holds files: move or delete them, or use a new subdomain such as `shop.example.com`.
+- The site's public folder already holds files: move or delete them, or use a new subdomain such as `blog.magaza.celikpanel.net`.
 - Not available to this site: ask your provider to offer it.
 
 Press **Install** and confirm. The panel creates the database and runs the application's own setup.

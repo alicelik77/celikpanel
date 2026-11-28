@@ -810,6 +810,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.MoveSiteSliceV1(&transport.MoveSiteSliceRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// S4 R2b: a site's crontab moved into timers, and back.
+		{name: "MoveSiteTasksV1", run: func(expected string) string {
+			var response transport.SiteTasksMoveResponse
+			_ = agent.MoveSiteTasksV1(&transport.SiteTasksMoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "UndoSiteTasksMoveV1", run: func(expected string) string {
+			var response transport.SiteTasksMoveResponse
+			_ = agent.UndoSiteTasksMoveV1(&transport.SiteTasksMoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// Fix round: a missing task file rebuilt from the last rendered copy.
+		{name: "RebuildSiteTaskSourceV1", run: func(expected string) string {
+			var response transport.SiteTaskSourceResponse
+			_ = agent.RebuildSiteTaskSourceV1(&transport.SiteTasksMoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

@@ -15,7 +15,7 @@ Menüdeki **Alan Adları** sayfası alan adlarınızı türü, disk kullanımı,
 ## Alan adı eklemek {#adding}
 
 1. **Alan adı ekle** düğmesine basın.
-2. **Alan adı** kutusuna adı `www` olmadan yazın, örneğin `example.com`. Alt alan adı da aynı yoldan eklenir: `magaza.example.com`.
+2. **Alan adı** kutusuna adı `www` olmadan yazın, örneğin `magaza.celikpanel.net`. Alt alan adı da aynı yoldan eklenir: `blog.magaza.celikpanel.net`.
 3. **Bu alan adı ne için?** sorusunda **Web sitesi** seçin; site başka yerde barındırılıyorsa **Yalnız DNS (web sitesi yok)** seçin.
 4. Alan adı bu sunucuyu zaten gösteriyorsa **SSL etkinleştir (Let’s Encrypt)** işaretli kalsın.
 5. **Alan adı oluştur** düğmesine basın.

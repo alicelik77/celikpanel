@@ -35,9 +35,26 @@ import (
 // hâlidir; Agent kendini egress tablosunun yanına kopyalar, böylece birimler
 // CelikPanel kaldırılsa da başlar.
 
-// sandboxHelperMode reports whether this process was started as the helper.
+// sandboxHelperMode reports whether this process was started as the helper
+// (under either of its names: the programs' copy or the tasks' copy).
 func sandboxHelperMode() bool {
-	return len(os.Args) > 0 && filepath.Base(os.Args[0]) == sitesandbox.HelperName
+	if len(os.Args) == 0 {
+		return false
+	}
+	name := filepath.Base(os.Args[0])
+	return name == sitesandbox.HelperName || name == sitesandbox.TaskHelperName
+}
+
+// sandboxHelperCopies are the helper's two copies and their ledger kinds
+// (S4 R2b second fix round). Sites' scheduled tasks call the second one: a
+// release before R2b replaces the first with its own copy, which refuses
+// the task units' names, and never touches the second, so going back to
+// such a release does not stop the tasks (docs/SITE-SANDBOX.md section
+// 9.4). Both are installed, checked and repaired by the same code; neither
+// is removed (units name them, and they keep working without CelikPanel).
+var sandboxHelperCopies = []struct{ name, kind string }{
+	{sitesandbox.HelperName, "sandbox_helper"},
+	{sitesandbox.TaskHelperName, "sandbox_task_helper"},
 }
 
 // sandboxHelperSource is the running binary (the open inode, even after an
@@ -107,7 +124,7 @@ func ensureSandboxBindTemplate() error {
 	return nil
 }
 
-// ensureSandboxHelperBinary copies the running Agent to the helper's place.
+// ensureSandboxHelperBinary copies the running Agent to the helper's places.
 func ensureSandboxHelperBinary() error {
 	if sandboxHelperSelfSum == "" {
 		sum, err := fileSHA256(sandboxHelperSource)
@@ -119,7 +136,17 @@ func ensureSandboxHelperBinary() error {
 	if err := os.MkdirAll(sandboxEgressDir, 0o755); err != nil {
 		return fmt.Errorf("the sandbox folder %s: %v", sandboxEgressDir, err)
 	}
-	dst := filepath.Join(sandboxEgressDir, sitesandbox.HelperName)
+	for _, c := range sandboxHelperCopies {
+		if err := ensureSandboxHelperCopy(filepath.Join(sandboxEgressDir, c.name), c.kind); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureSandboxHelperCopy puts one copy of the helper in place under the
+// D-031 rule for a binary.
+func ensureSandboxHelperCopy(dst, kind string) error {
 	ledger := readSandboxLedger()
 	fi, err := os.Lstat(dst)
 	switch {
@@ -140,7 +167,7 @@ func ensureSandboxHelperBinary() error {
 				}
 			}
 			if ledger[dst].RenderSHA256 != current {
-				if err := setSandboxLedgerEntry(dst, "sandbox_helper", current); err != nil {
+				if err := setSandboxLedgerEntry(dst, kind, current); err != nil {
 					log.Printf("site sandbox: record the helper: %v", err)
 				}
 			}
@@ -155,7 +182,7 @@ func ensureSandboxHelperBinary() error {
 	if err := copySandboxHelper(dst); err != nil {
 		return fmt.Errorf("install %s: %v", dst, err)
 	}
-	if err := setSandboxLedgerEntry(dst, "sandbox_helper", sandboxHelperSelfSum); err != nil {
+	if err := setSandboxLedgerEntry(dst, kind, sandboxHelperSelfSum); err != nil {
 		log.Printf("site sandbox: record the helper: %v", err)
 	}
 	return nil

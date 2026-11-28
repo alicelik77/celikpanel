@@ -643,6 +643,110 @@
           "says": "Removing an added database user no longer hands what it made to the"
         }
       ]
+    },
+    {
+      "id": "CP-2026-31",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.150",
+      "summary": {
+        "en": "A site’s scheduled tasks ran from cron outside the site’s limits and outside the block on sending mail directly, and a site’s own code could keep jobs running there by installing its own crontab, switching lingering on for its account, or through a service manager an SFTP login started.",
+        "tr": "Bir sitenin zamanlanmış görevleri cron’dan, sitenin sınırlarının ve doğrudan posta göndermeye konan engelin dışında çalışıyordu; bir sitenin kendi kodu da kendi crontab’ını kurarak, hesabı için “lingering”i açarak ya da bir SFTP girişinin başlattığı hizmet yöneticisi üzerinden orada iş çalıştırabiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:65",
+          "says": "its scheduled tasks are not inside them in this release."
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:32",
+          "says": "Until now a site's scheduled tasks ran outside the site's limits."
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:38",
+          "says": "Now each scheduled task is a standard systemd timer"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-32",
+      "opened": "2026-11-27",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.150",
+      "summary": {
+        "en": "An existing site went inside its limits only when the administrator pressed “Move into the limits” or “Move them all”; on a server where nobody pressed them, no existing site was inside its limits.",
+        "tr": "Var olan bir site ancak yönetici “Sınırların içine taşı” ya da “Hepsini taşı” düğmesine bastığında sınırlarının içine giriyordu; kimsenin basmadığı bir sunucuda var olan hiçbir site sınırlarının içinde değildi."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:36",
+          "says": "and each such site's Overview offers **Move into the limits**."
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:62",
+          "says": "Every site goes inside its limits by itself."
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:77",
+          "says": "The buttons \"Move into the limits\" and \"Move them all\" are gone."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-33",
+      "opened": "2026-11-26",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.150",
+      "summary": {
+        "en": "On a server not restarted since CelikPanel’s firewall rules were first saved on it, a restart of the server during an update left the update unfinished: the panel and its agent stayed stopped and neither the automatic recovery nor the recovery command finished it.",
+        "tr": "CelikPanel’in güvenlik duvarı kuralları ilk kez kaydedildiğinden beri yeniden başlatılmamış bir sunucuda, güncelleme sırasında sunucunun yeniden başlatılması güncellemeyi yarım bırakıyordu: panel ve ajanı durmuş kalıyor, ne otomatik kurtarma ne de kurtarma komutu güncellemeyi bitirebiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:274",
+          "says": "Restarting the server while an update is in progress."
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:137",
+          "says": "Now the update finishes by itself after such a restart."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-34",
+      "opened": "2026-11-26",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.150",
+      "summary": {
+        "en": "After an update that was refused before it started, an update page left open could stay locked in that browser.",
+        "tr": "Başlamadan reddedilen bir güncellemeden sonra açık bırakılan bir güncelleme sayfası o tarayıcıda kilitli kalabiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:281",
+          "says": "An update page left open through an update that was refused before it"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:154",
+          "says": "The update page after an update that was refused before it started"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-35",
+      "opened": "2026-11-26",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.150",
+      "summary": {
+        "en": "Deleting a database whose user the panel’s agent refused to change (an administrator account, for example) asked to press Delete again, although pressing again could not finish while the refusal held.",
+        "tr": "Panelin ajanının değiştirmeyi reddettiği bir kullanıcısı (örneğin bir yönetici hesabı) olan bir veritabanını silmek, ret sürdükçe yeniden basmak işi bitiremeyecekken Sil’e yeniden basmayı istiyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.150.md:165",
+          "says": "Deleting a database whose user was left on the database server"
+        }
+      ]
     }
   ]
 }

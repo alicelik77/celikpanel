@@ -472,6 +472,8 @@ let overviewURL = shared.compile('components/domain/sections/OverviewSection.tsx
   '/sections': sectionsURL,
   '/DomainSSLOverviewCard': dataModule('export const DomainSSLOverviewCard = () => null;'),
   '/kit/words': dataModule('export const siteKindWord = (t, code) => "kind(" + code + ")";'),
+  // S4 R2b: the administrator sees the limits card on every site; here a customer.
+  '/auth/AuthContext': dataModule("export const useAuth = () => ({ role: 'customer' });"),
   '/lib/domainSectionIcons': compileSource('lib/domainSectionIcons.ts', (specifier) => (specifier.endsWith('/sections') ? sectionsURL : stub)),
 });
 // S4 R2a: the site limits' card reads its own address; not this test's.

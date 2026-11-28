@@ -130,9 +130,37 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 		log.Printf("[409][cron] a line not made in CelikPanel was not changed")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobOutsidePanel, cronJobOutsidePanelMessage, "")
 		return
+	case agentAnsweredExactly(err, transport.SiteTasksSourceHeld):
+		// S4 R2b: the server owner changed the site's task file by hand; it
+		// is kept and used, and this change waits beside it.
+		log.Printf("[409][cron] the task file was changed on the server; the change waits beside it")
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksSourceHeld, siteTasksSourceHeldMessage, "")
+		return
 	case agentAnsweredExactly(err, transport.CronJobAmbiguous):
 		log.Printf("[409][cron] a task that stands twice in the crontab was not changed")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobAmbiguous, cronJobAmbiguousMessage, "")
+		return
+	// S4 R2b fix round.
+	case agentAnsweredExactly(err, transport.SiteTasksSourceGone):
+		log.Printf("[409][cron] the site's task file is missing while its timers remain; nothing was changed")
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksSourceMissing, siteTasksSourceMissingMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.CronCommandTooLong):
+		writeCodedError(w, http.StatusBadRequest, errCodeCronCommandTooLong, cronCommandTooLongMessage, "")
+		return
+	case agentRefusedCronLineBreak(err):
+		writeCodedError(w, http.StatusBadRequest, errCodeCronTaskLineBreak, cronTaskLineBreakMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.SiteTasksEnvValue):
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksEnvValue, siteTasksEnvValueMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.SiteTasksCronSetting):
+		// alpha.150 fix round (F5).
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksCronSetting, siteTasksCronSettingMessage, "")
+		return
+	case agentAnsweredWithPrefix(err, transport.SiteTasksLimitsMissing):
+		log.Printf("[409][cron] saved, but the site's limits file is not in place: %s", boundedAgentDiagnostic(err.Error()))
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksLimitsMissing, siteTasksLimitsMissingMessage, "")
 		return
 	}
 	if !agentReportedCronNotInstalled(err) {
@@ -155,4 +183,73 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 func writeNativeCronRemovalRefused(w http.ResponseWriter) {
 	log.Printf("[409][services] native cron removal refused")
 	writeCodedError(w, http.StatusConflict, errCodeNativeCronRemovalRefused, core.NativeCronRemovalRefusal, "")
+}
+
+// errCodeSiteTasksSourceHeld and its message (S4 R2b): a change of a moved
+// site's tasks when the server owner changed its task file by hand.
+const (
+	errCodeSiteTasksSourceHeld = "SITE_TASKS_SOURCE_HELD"
+	siteTasksSourceHeldMessage = "The server owner changed this site's task file by hand. Their file is kept and its tasks run as it says; your change was saved beside it and does not apply until the server owner takes it in."
+)
+
+// S4 R2b fix round: the refusals of a change of a moved site's tasks.
+const (
+	errCodeSiteTasksSourceMissing = "SITE_TASKS_SOURCE_MISSING"
+	siteTasksSourceMissingMessage = "This site's task file is missing on the server while its tasks still run as timers, so nothing was changed: a change now would remove every other task. The administrator rebuilds the file on this screen from what CelikPanel last made the timers from; then change the task again."
+	errCodeCronCommandTooLong     = "CRON_COMMAND_TOO_LONG"
+	cronCommandTooLongMessage     = "The command is longer than cron runs (998 bytes at most), so nothing was saved. Put the command into a script file and run the script from the task."
+	errCodeSiteTasksEnvValue      = "SITE_TASKS_ENV_VALUE"
+	siteTasksEnvValueMessage      = "A setting of this site's task file holds a value the server cannot read (not plain UTF-8 text, a quote mark, a backslash or a control character), so nothing was saved. The server owner corrects that line of the task file; then save again."
+	errCodeSiteTasksCronSetting   = "SITE_TASKS_CRON_SETTING"
+	siteTasksCronSettingMessage   = "A setting of this site's task file (CRON_TZ, RANDOM_DELAY or START_HOURS_RANGE) changes when tasks run for some cron programs, and a timer cannot keep that, so nothing was saved. The server owner removes that line of the task file (and sets the time in each task's schedule instead); then save again."
+	errCodeSiteTasksLimitsMissing = "SITE_TASKS_LIMITS_MISSING"
+	siteTasksLimitsMissingMessage = "The task was saved, but it does not run yet: this site's limits file is not in place on the server, and no task runs outside the site's limits. The administrator opens the subscription's limits and saves them (or the server owner checks /etc/systemd/system); then save the task again."
+)
+
+// A task is one line (alpha.150 lab W2): a schedule, command or description
+// with a line break (or a NUL) would write crontab lines nobody asked for, so
+// it is refused before the Agent is asked, with words, as the Agent refuses it
+// too (cron_rpc.go rejectCrontabInjection, before anything is read or
+// written). Its answer was a 500 before. Who acts: whoever writes the task.
+// Görev tek satırdır: satır sonu olan alan Agent'a sorulmadan reddedilir.
+const (
+	errCodeCronTaskLineBreak = "CRON_TASK_LINE_BREAK"
+	cronTaskLineBreakMessage = "A task is one line, and its command, schedule or description has a line break, so nothing was saved. " +
+		"Write the command on one line, give each further command a task of its own, or put the commands into a script file and run the script from the task."
+)
+
+// cronLineBreakFields are the Agent's own refusals of a field with a line
+// break (cron_rpc.go rejectCrontabInjection), answered with the same words.
+var cronLineBreakFields = []string{"schedule", "command", "comment"}
+
+// refuseCronLineBreak answers 400 CRON_TASK_LINE_BREAK when any value holds a
+// line break or a NUL; nothing reaches the Agent then.
+func refuseCronLineBreak(w http.ResponseWriter, values ...string) bool {
+	for _, value := range values {
+		if strings.ContainsAny(value, "\n\r\x00") {
+			writeCodedError(w, http.StatusBadRequest, errCodeCronTaskLineBreak, cronTaskLineBreakMessage, "")
+			return true
+		}
+	}
+	return false
+}
+
+// agentRefusedCronLineBreak: the Agent's own answer for such a field.
+func agentRefusedCronLineBreak(err error) bool {
+	for _, field := range cronLineBreakFields {
+		if agentAnsweredExactly(err, "cron "+field+" must not contain line breaks") {
+			return true
+		}
+	}
+	return false
+}
+
+// agentAnsweredWithPrefix: err is the Agent's own RPC answer starting with
+// this exact code text (the rest names what is wrong on that server).
+func agentAnsweredWithPrefix(err error, prefix string) bool {
+	var serverErr rpc.ServerError
+	if !errors.As(err, &serverErr) {
+		return false
+	}
+	return strings.HasPrefix(strings.TrimSpace(string(serverErr)), prefix)
 }

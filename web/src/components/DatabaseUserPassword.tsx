@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import { useDataToolsWords } from './dataToolsWords';
+import { useAuth } from '../auth/AuthContext';
 import { readApiError, refusalText } from '../lib/apiError';
+import { refusalActor } from '../lib/refusalActor';
 import { followOperation, type OperationEnd } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { passwordAcceptable } from '../lib/passwordPolicy';
@@ -32,6 +34,7 @@ export interface DatabaseUserPasswordProps {
 
 export function DatabaseUserPassword({ url, user, onClose, onSettled }: DatabaseUserPasswordProps) {
     const { t } = useDataToolsWords();
+    const { role } = useAuth();
     const [password, setPassword] = useState('');
     const [busy, setBusy] = useState(false);
     const acceptable = passwordAcceptable(password, 'database_user');
@@ -49,7 +52,7 @@ export function DatabaseUserPassword({ url, user, onClose, onSettled }: Database
                     onSettled?.();
                     if (!res.ok) {
                         const problem = await readApiError(res);
-                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.failed') };
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.failed'), actor: refusalActor(problem, role, 'existing') };
                     }
                     setPassword('');
                     onClose();
