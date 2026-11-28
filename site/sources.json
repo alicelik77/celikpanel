@@ -149,12 +149,12 @@
     ],
     "fig.domain.caption": [
       {
-        "cite": "web/tools/browser-inspect/README.md:781",
-        "says": "the public website's screens, 2026-11-19"
+        "cite": "web/tools/browser-inspect/README.md:803",
+        "says": "2026-11-28, from the alpha.150 release content"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
-        "says": "Published** on 2026-11-20"
+        "cite": "web/tools/browser-inspect/scenarios-batch37.mjs:1",
+        "says": "names and date renewed 2026-11-28"
       },
       {
         "cite": "download-portal/assets/shots/domain-en-light.webp"

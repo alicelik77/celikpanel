@@ -54,7 +54,7 @@ var moved = []struct {
 var assetFiles = []string{"public.css", "home.css", "pages.css", "public.js", "boot.js"}
 
 // Product screens: assets/shots/<name>-<lang>-<theme>.webp, taken from the
-// panel build of 19 November 2026 with sample data (web/tools/browser-inspect,
+// panel build of 28 November 2026 with sample data (web/tools/browser-inspect,
 // batch 37). Each screen exists per language and theme as
 // <name>-<lang>-<theme>.webp (1280x680, cropped to the content), -2x.webp
 // (2560x1360) and -phone.webp (780x1688, a 390-wide phone at twice the

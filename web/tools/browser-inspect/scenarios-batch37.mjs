@@ -1,14 +1,17 @@
-// Batch 37 (2026-11-19): the product screens of the public website
-// (celikpanel.net, `site/`). Three pages of a well-kept example server, as an
-// owner sees them: the Dashboard, Domains and Databases.
+// Batch 37 (2026-11-19, names and date renewed 2026-11-28): the product
+// screens of the public website (celikpanel.net, `site/`). Pages of a
+// well-kept sample server, as an owner sees them: the Dashboard, Domains, one
+// domain's Overview and Databases.
 //
-//   sitescreens  dashboard, domains, databases: one viewport each, written as
-//                WebP (quality 82) beside the PNG record, into
+//   sitescreens  dashboard, domains, domain, databases: one viewport each,
+//                written as PNG beside the record into
 //                BROWSER_INSPECT_SITE (default: <out>/site) as
-//                product-<page>-<locale>-<theme>.png
+//                product-<page>-<locale>-<theme>.png; the site's WebP files
+//                (quality 82) are made from these, see README.md
 //
-// Every name, address and number is SAMPLE data (example.com, example.net,
-// example.org, 192.0.2.0/24); the server is batch 20's sample "everything
+// Every name, address and number is SAMPLE data (names under
+// celikpanel.net such as magaza.celikpanel.net and ajans.celikpanel.net,
+// which this harness never resolves or opens; 192.0.2.0/24); the server is batch 20's sample "everything
 // installed" server. Nothing is contacted but the mock on 127.0.0.1.
 // Otuz yedinci grup: herkese açık sitenin ürün ekranları; hepsi örnek veri.
 import { mkdir } from 'node:fs/promises';
@@ -16,18 +19,18 @@ import { join, resolve } from 'node:path';
 import { batch20State } from './mock-batch20.mjs';
 
 const MB = 1048576;
-const day = (offset) => new Date(Date.UTC(2026, 10, 19 - offset, 9, 30)).toISOString();
+const day = (offset) => new Date(Date.UTC(2026, 10, 28 - offset, 2, 30)).toISOString();
 const domain = (id, name, extra = {}) => ({
     id, domain_name: name, status: 'active', project_type: 'php', php_version: '8.4', ssl_enabled: true,
     created_at: day(40 - id * 3), disk_usage: 0, bandwidth: 0, ...extra,
 });
 const DOMAINS = [
-    domain(1, 'example.com', { disk_usage: 1843 * MB, bandwidth: 412 * MB }),
-    domain(2, 'shop.example.com', { disk_usage: 5120 * MB, bandwidth: 2390 * MB }),
-    domain(3, 'example.net', { project_type: 'node', php_version: '', disk_usage: 612 * MB, bandwidth: 845 * MB }),
-    domain(4, 'docs.example.org', { project_type: 'static', php_version: '', disk_usage: 94 * MB, bandwidth: 120 * MB }),
-    domain(5, 'studio.example.org', { php_version: '8.3', disk_usage: 2310 * MB, bandwidth: 530 * MB }),
-    domain(6, 'blog.example.net', { disk_usage: 760 * MB, bandwidth: 96 * MB }),
+    domain(1, 'magaza.celikpanel.net', { disk_usage: 1843 * MB, bandwidth: 412 * MB }),
+    domain(2, 'odeme.magaza.celikpanel.net', { disk_usage: 5120 * MB, bandwidth: 2390 * MB }),
+    domain(3, 'ajans.celikpanel.net', { project_type: 'node', php_version: '', disk_usage: 612 * MB, bandwidth: 845 * MB }),
+    domain(4, 'belge.ajans.celikpanel.net', { project_type: 'static', php_version: '', disk_usage: 94 * MB, bandwidth: 120 * MB }),
+    domain(5, 'studyo.celikpanel.net', { php_version: '8.3', disk_usage: 2310 * MB, bandwidth: 530 * MB }),
+    domain(6, 'blog.celikpanel.net', { disk_usage: 760 * MB, bandwidth: 96 * MB }),
 ];
 const owner = (id, username, role, parent = null) => ({ id, username, role, parent, self: role === 'admin' });
 const ADMIN = owner(1, 'admin', 'admin');
@@ -38,10 +41,10 @@ const database = (id, name, engine, who, domainId, sizeMiB, users) => ({
 const DATABASES = {
     databases: [
         database(1, 'shop_main', 'mariadb', owner(3, 'shopteam', 'customer', 'agency'), 2, 46, ['shop_app']),
-        database(2, 'example_wp', 'mariadb', owner(2, 'example', 'customer'), 1, 20.5, ['example_wp']),
+        database(2, 'magaza_wp', 'mariadb', owner(2, 'magaza', 'customer'), 1, 20.5, ['magaza_wp']),
         database(3, 'app_events', 'postgresql', owner(4, 'netapp', 'customer'), 3, 12.2, ['app_rw', 'app_ro']),
         database(4, 'studio_site', 'mariadb', owner(5, 'studio', 'customer', 'agency'), 5, 9, ['studio']),
-        database(5, 'blog', 'mariadb', owner(2, 'example', 'customer'), 6, 5, ['blog']),
+        database(5, 'blog', 'mariadb', owner(2, 'magaza', 'customer'), 6, 5, ['blog']),
     ],
     engines: [{ engine: 'mariadb', installed: true, running: true }, { engine: 'postgresql', installed: true, running: true }],
     may_create: true,
@@ -49,13 +52,13 @@ const DATABASES = {
 const OS_UPDATES = { state: 'ready', checked_at: day(0), package_family: 'apt', pending: { state: 'known', total: 0, security: 0, lists_at: day(0) }, automatic: { state: 'on', tool: 'unattended-upgrades' } };
 // One domain's overview: delegated here, a valid certificate, mail
 // authentication complete, a recent backup, disk within its limit.
-const CONNECTION = { domain: 'example.com', server_ip: '192.0.2.10', nameservers: ['ns1.example.net', 'ns2.example.net'], live_nameservers: ['ns1.example.net', 'ns2.example.net'], live_ips: ['192.0.2.10'], status: 'delegated', ssl_ready: true, glue_needed: false, nameservers_usable: true, propagation_pending: false, checked_at: day(0), dns_management_mode: 'local' };
+const CONNECTION = { domain: 'magaza.celikpanel.net', server_ip: '192.0.2.10', nameservers: ['ns1.magaza.celikpanel.net', 'ns2.magaza.celikpanel.net'], live_nameservers: ['ns1.magaza.celikpanel.net', 'ns2.magaza.celikpanel.net'], live_ips: ['192.0.2.10'], status: 'delegated', ssl_ready: true, glue_needed: false, nameservers_usable: true, propagation_pending: false, checked_at: day(0), dns_management_mode: 'local' };
 const CERTIFICATE = {
-    domain_id: 1, domain_name: 'example.com', has_certificate: true, managed_names: ['example.com', 'www.example.com'],
+    domain_id: 1, domain_name: 'magaza.celikpanel.net', has_certificate: true, managed_names: ['magaza.celikpanel.net', 'www.magaza.celikpanel.net'],
     settings: { force_https: true, hsts_enabled: false, hsts_max_age: 300 },
     certificate: {
-        id: 4, type: 'letsencrypt', provider_id: 'letsencrypt', issuer: 'R11', subject: 'example.com', issued_at: day(12), expires_at: day(-78),
-        days_until_expiry: 78, auto_renew: true, renewal_status: 'ok', status: 'active', dns_names: ['example.com', 'www.example.com'],
+        id: 4, type: 'letsencrypt', provider_id: 'letsencrypt', issuer: 'R11', subject: 'magaza.celikpanel.net', issued_at: day(12), expires_at: day(-78),
+        days_until_expiry: 78, auto_renew: true, renewal_status: 'ok', status: 'active', dns_names: ['magaza.celikpanel.net', 'www.magaza.celikpanel.net'],
         activated: true, usable: true, trust_status: 'trusted', activation_pending: false, dependents_pending: false,
     },
 };
@@ -105,8 +108,8 @@ export default function batch37(scenarios, { base, locale, theme, out, viewport,
         });
         for (const [name, path, ready] of [
             ['dashboard', '/', () => !!document.querySelector('main h1')],
-            ['domains', '/domains', () => /example\.com/.test(document.querySelector('main')?.innerText || '')],
-            ['domain', '/domains/example.com', () => /example\.com/.test(document.querySelector('main')?.innerText || '')],
+            ['domains', '/domains', () => /magaza\.celikpanel\.net/.test(document.querySelector('main')?.innerText || '')],
+            ['domain', '/domains/magaza.celikpanel.net', () => /magaza\.celikpanel\.net/.test(document.querySelector('main')?.innerText || '')],
             ['databases', '/databases', () => /shop_main/.test(document.querySelector('main')?.innerText || '')],
         ]) {
             const page = await open(path);

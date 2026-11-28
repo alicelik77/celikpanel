@@ -790,11 +790,17 @@ photographed. A desktop run takes them at 1280×800 CSS pixels at twice the
 density; a phone run at 390×844, also at twice the density. They are written
 beside the record as PNG into `BROWSER_INSPECT_SITE` (default
 `<out>/site`) as `product-<page>-<locale>-<theme>.png`. Every name, address
-and number is sample data (example.com, example.net, example.org,
-192.0.2.10). For the site each desktop shot becomes
-`<page>-<locale>-<theme>-2x.webp` (2560×1600) and a half-size
-`<page>-<locale>-<theme>.webp`, each phone shot `<page>-<locale>-<theme>-phone.webp`;
-look at every one, then run `go test ./site`.
+and number is sample data (since 2026-11-28 names under our own domain such
+as magaza.celikpanel.net, ajans.celikpanel.net and blog.celikpanel.net, which
+the harness never resolves or opens; 192.0.2.10). For the site (domain,
+domains, databases) each desktop shot is cropped to its top 2560×1360 and
+saved as `<page>-<locale>-<theme>-2x.webp`, that crop halved (Pillow,
+Lanczos) to 1280×680 as `<page>-<locale>-<theme>.webp`, and each phone shot
+saved as is (780×1688) as `<page>-<locale>-<theme>-phone.webp`, all lossy
+WebP with Pillow at quality 82 (1x), 76 (2x) and 80 (phone), which keeps
+every file under the 120 KiB that `go test ./site` allows; look at every
+one, then run `go test ./site`. The site's pictures were last retaken on
+2026-11-28, from the alpha.150 release content, with these names.
 
 `scenarios-batch39.mjs` draws alpha.138's Programs section from overrides
 only: a program site as the administrator and as a customer (the row with
