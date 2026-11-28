@@ -342,6 +342,10 @@ sahibinin adımları buraya yalnız laboratuvarda denendikten sonra eklenir.
   bilinmediğini ve yeniden basmadan önce yeniden okunmasını söyler.
 - **Elle düzenlenen bir görev dosyası** zamanlayıcılara ekrandaki bir
   sonraki kayıtta ya da panelin bir sonraki açılışında ulaşır.
+- **Bir sitenin taşınması başarısız olmadan önce alınmış bir kopyadan geri
+  konan panel veritabanı** o başarısızlığı bilmez: o site kendiliğinden bir
+  kez daha denenir, yani programları bir kez daha yeniden başlatılıp geri
+  konur.
 - alpha.149'un açık listesi, bu sürümün kapatmadığı yerde açık kalır
   ([alpha.149 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.149.tr.md)).
 

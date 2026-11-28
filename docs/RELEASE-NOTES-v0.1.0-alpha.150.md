@@ -326,6 +326,9 @@ release are added here only once they have been checked in the lab.
   pressing again.
 - **A task file edited by hand** reaches the timers at the next save on
   the screen or the next start of the panel.
+- **A panel database put back from a copy made before a site's move
+  failed** no longer knows of that failure: that site is tried once more by
+  itself, so its programs are restarted and put back one more time.
 - The open list of alpha.149 stays open where this release does not close
   it ([alpha.149 release notes](RELEASE-NOTES-v0.1.0-alpha.149.md)).
 
