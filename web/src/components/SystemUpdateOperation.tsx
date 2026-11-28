@@ -1165,6 +1165,31 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         return result.result !== null;
     }, [adoptCanonicalSnapshot, reconcileCanonicalRecord, tabOwnerID]);
 
+    // The exact request this document dispatched was refused before anything
+    // started: its active record goes (a carried reload stays). true when it
+    // was this record that went.
+    const withdrawRefusedStart = useCallback(async (
+        exactMarker: UpdateMarker,
+        dispatchFence: DispatchFence,
+    ): Promise<boolean> => {
+        const result = await transactStoredRecord<boolean>(
+            dispatchFence.owner,
+            (current) => current?.phase === 'active'
+                && markerMatches(current.marker, exactMarker)
+                && current.dispatch_owner === dispatchFence.owner
+                && current.dispatch_attempted_at === dispatchFence.attemptedAt
+                ? { kind: 'write', record: current.required_reload ? reloadRecord(current.required_reload) : null, result: true }
+                : { kind: 'keep', result: false },
+            false,
+        );
+        if (result.kind !== 'committed') {
+            await reconcileCanonicalRecord();
+            return false;
+        }
+        adoptCanonicalSnapshot(result.snapshot);
+        return result.result;
+    }, [adoptCanonicalSnapshot, reconcileCanonicalRecord]);
+
     const postAuthorizedStartUnlocked = useCallback(async (
         exactMarker: UpdateMarker,
         dispatchFence: DispatchFence,
@@ -1241,7 +1266,8 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 || apiError.code === 'PANEL_UPDATE_INVALID_CONFIRMATION'
                 || apiError.code === 'PANEL_UPDATE_TARGET_CHANGED'
                 || apiError.code === 'PANEL_UPDATE_START_REFUSED'
-                || apiError.code === 'PANEL_UPDATE_UNAVAILABLE';
+                || apiError.code === 'PANEL_UPDATE_UNAVAILABLE'
+                || apiError.code === 'PANEL_UPDATE_STATUS_UNAVAILABLE';
             const immutableStatus = response.status === 400 || response.status === 401
                 || response.status === 403 || response.status === 404 || response.status === 405
                 || response.status === 409 || response.status === 413 || response.status === 415
@@ -1250,7 +1276,15 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 const failure = response.status === 401 && !apiError.code
                     ? t('panelUpdate.sessionExpiredBeforeStart')
                     : responseMessage;
-                if (await commitTerminal(exactMarker, 'failed', failure, dispatchFence)) {
+                // alpha.150 lab D5: each of these answers is the Panel's
+                // refusal before anything was started (a site being moved, a
+                // busy server, a changed target, an invalid or unauthorised
+                // request); no update record exists for it. This browser's
+                // record goes, so nothing locks the page and no "result not
+                // known" notice follows; the update card says the refusal's
+                // own words and Start stays usable.
+                // Hicbir sey baslamadan gelen ret: kayit silinir, kart nedeni soyler.
+                if (await withdrawRefusedStart(exactMarker, dispatchFence)) {
                     return { kind: 'failed', message: failure };
                 }
             }
@@ -1274,7 +1308,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         } finally {
             window.clearTimeout(timeout);
         }
-    }, [adoptCanonicalSnapshot, commitTerminal, readMemory, reconcileCanonicalRecord, t]);
+    }, [adoptCanonicalSnapshot, commitTerminal, readMemory, reconcileCanonicalRecord, t, withdrawRefusedStart]);
 
     const postAuthorizedStart = useCallback(async (
         exactMarker: UpdateMarker,

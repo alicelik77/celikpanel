@@ -122,6 +122,8 @@ export const enErrorsScreens = {
     'err.PANEL_UPDATE_SITE_MOVE_RUNNING': 'A site is being moved into its limits or its scheduled tasks are being changed, so the update was not started: it would stop the panel’s agent in the middle of that. Wait until it has finished, then start the update again.',
     // alpha.150 fix round G3: the panel's own worker is moving one site; its move's bound, then the update again.
     'err.PANEL_UPDATE_SITE_AUTO_MOVE_RUNNING': 'One site is being moved into its limits right now, so the update was not started: it would stop the panel’s agent in the middle of that move. That move ends within about 12 minutes, and the panel starts no other site meanwhile. Start the update again then.',
+    // alpha.150 lab D5: the update service's own refusal before anything started.
+    'err.PANEL_UPDATE_START_REFUSED': 'The update service on this server did not accept this update, so nothing was started. The administrator reads why in the panel’s journal (sudo journalctl -u celikpanel-panel), checks for updates again and starts the update again.',
     'err.firewall_sync_failed': 'The service changed, but the active firewall policy could not be synchronized.',
     'err.firewall_sync_host_busy': 'The service changed, but this server stayed busy (another change or the package manager), so the firewall was not updated and nothing was started for it. You, the owner: let the other change finish, then run this operation again (in server setup: Review a revised plan); that updates the firewall.',
     'err.mail_profile_confirmation_required': 'Review and accept the mail profile plan before starting.',
